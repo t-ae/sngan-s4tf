@@ -2,49 +2,89 @@ import TensorFlow
 import TensorBoardX
 
 struct Generator: Layer {
-    var head = SN(TransposedConv2D(filterShape: (4, 4, 128, latentSize),
+    enum UpsampleMethod {
+        case convStride, nearestNeighbor, bilinear, depthToSpace
+    }
+    
+    @noDerivative
+    var upsampleMethod: UpsampleMethod
+    
+    var head: SN<TransposedConv2D<Float>>
+    var conv1: SN<TransposedConv2D<Float>>
+    var conv2: SN<TransposedConv2D<Float>>
+    var conv3: SN<TransposedConv2D<Float>>
+    var conv4: SN<TransposedConv2D<Float>>
+    var tail: Conv2D<Float>
+    
+    var bn0: Configurable<BatchNorm<Float>>
+    var bn1: Configurable<BatchNorm<Float>>
+    var bn2: Configurable<BatchNorm<Float>>
+    var bn3: Configurable<BatchNorm<Float>>
+    var bn4: Configurable<BatchNorm<Float>>
+    
+    init(upsampleMethod: UpsampleMethod, enableBatchNorm: Bool) {
+        self.upsampleMethod = upsampleMethod
+        
+        let convStride = upsampleMethod == .convStride ? (2, 2) : (1, 1)
+        let depthFactor = upsampleMethod == .depthToSpace ? 4 : 1
+        
+        head = SN(TransposedConv2D(filterShape: (4, 4, 128, latentSize),
                                    filterInitializer: heNormal))
-    var conv1 = SN(TransposedConv2D<Float>(filterShape: (4, 4, 128, 128), strides: (2, 2),
+        conv1 = SN(TransposedConv2D<Float>(filterShape: (4, 4, 128*depthFactor, 128), strides: convStride,
                                            padding: .same, filterInitializer: heNormal))
-    var conv2 = SN(TransposedConv2D<Float>(filterShape: (4, 4, 64, 128), strides: (2, 2),
+        conv2 = SN(TransposedConv2D<Float>(filterShape: (4, 4, 64*depthFactor, 128), strides: convStride,
                                            padding: .same, filterInitializer: heNormal))
-    var conv3 = SN(TransposedConv2D<Float>(filterShape: (4, 4, 32, 64), strides: (2, 2),
+        conv3 = SN(TransposedConv2D<Float>(filterShape: (4, 4, 32*depthFactor, 64), strides: convStride,
                                            padding: .same, filterInitializer: heNormal))
-    var conv4 = SN(TransposedConv2D<Float>(filterShape: (4, 4, 16, 32), strides: (2, 2),
+        conv4 = SN(TransposedConv2D<Float>(filterShape: (4, 4, 16*depthFactor, 32), strides: convStride,
                                            padding: .same, filterInitializer: heNormal))
-    
-    var bn0 = BatchNorm<Float>(featureCount: 128)
-    var bn1 = BatchNorm<Float>(featureCount: 128)
-    var bn2 = BatchNorm<Float>(featureCount: 64)
-    var bn3 = BatchNorm<Float>(featureCount: 32)
-    var bn4 = BatchNorm<Float>(featureCount: 16)
-    
-    var tail = Conv2D<Float>(filterShape: (3, 3, 16, 3), padding: .same,
+        tail = Conv2D<Float>(filterShape: (3, 3, 16, 3), padding: .same,
                              activation: tanh, filterInitializer: heNormal)
+        
+        bn0 = Configurable(BatchNorm<Float>(featureCount: 128), enabled: enableBatchNorm)
+        bn1 = Configurable(BatchNorm<Float>(featureCount: 128), enabled: enableBatchNorm)
+        bn2 = Configurable(BatchNorm<Float>(featureCount: 64), enabled: enableBatchNorm)
+        bn3 = Configurable(BatchNorm<Float>(featureCount: 32), enabled: enableBatchNorm)
+        bn4 = Configurable(BatchNorm<Float>(featureCount: 16), enabled: enableBatchNorm)
+    }
     
     @differentiable
     func callAsFunction(_ input: Tensor<Float>) -> Tensor<Float> {
         var x = input
         
         x = x.reshaped(to: [-1, 1, 1, latentSize])
-        if enableBatchNormalization.G {
-            x = lrelu(bn0(head(x))) // [-1, 4, 4, 128]
-            x = lrelu(bn1(conv1(x))) // [-1, 8, 8, 128]
-            x = lrelu(bn2(conv2(x))) // [-1, 16, 16, 64]
-            x = lrelu(bn3(conv3(x))) // [-1, 32, 32, 32]
-            x = lrelu(bn4(conv4(x))) // [-1, 64, 64, 16]
-        } else {
-            x = lrelu(head(x)) // [-1, 4, 4, 128]
-            x = lrelu(conv1(x)) // [-1, 8, 8, 128]
-            x = lrelu(conv2(x)) // [-1, 16, 16, 64]
-            x = lrelu(conv3(x)) // [-1, 32, 32, 32]
-            x = lrelu(conv4(x)) // [-1, 64, 64, 16]
-        }
+        
+        x = lrelu(bn0(head(x))) // [-1, 4, 4, 128]
+        x = conv1(x)
+        x = lrelu(bn1(upsample(x))) // [-1, 8, 8, 128]
+        x = conv2(x)
+        x = lrelu(bn2(upsample(x))) // [-1, 16, 16, 64]
+        x = conv3(x)
+        x = lrelu(bn3(upsample(x))) // [-1, 32, 32, 32]
+        x = conv4(x)
+        x = lrelu(bn4(upsample(x))) // [-1, 64, 64, 16]
+        
         x = tail(x)
         
         precondition(x.shape == [input.shape[0], 64, 64, 3], "Invalid shape: \(x.shape)")
         
         return x
+    }
+    
+    var upsampling = UpSampling2D<Float>(size: 2)
+    
+    @differentiable
+    func upsample(_ tensor: Tensor<Float>) -> Tensor<Float> {
+        switch upsampleMethod {
+        case .convStride:
+            return tensor
+        case .nearestNeighbor:
+            return upsampling(tensor)
+        case .bilinear:
+            return resize2xBilinear(images: tensor)
+        case .depthToSpace:
+            return depthToSpace(tensor, blockSize: 2)
+        }
     }
     
     func writeHistograms(writer: SummaryWriter, globalStep: Int) {

@@ -158,3 +158,39 @@ func depthToSpace(_ tensor: Tensor<Float>, blockSize: Int) -> Tensor<Float> {
     x = x.reshaped(to: [b, newHeight, newWidth, newDepth])
     return x
 }
+
+struct Configurable<L: Layer>: Layer where L.Input == L.Output {
+    var layer: L
+    @noDerivative
+    var enabled: Bool
+    
+    init(_ layer: L, enabled: Bool = true) {
+        self.layer = layer
+        self.enabled = enabled
+    }
+    
+    @differentiable
+    func callAsFunction(_ input: L.Input) -> L.Output {
+        if enabled {
+            return layer(input)
+        } else {
+            return input
+        }
+    }
+}
+
+@differentiable(vjp: vjpResize2xBilinear)
+public func resize2xBilinear(images: Tensor<Float>) -> Tensor<Float> {
+    let newHeight = images.shape[1] * 2
+    let newWidth = images.shape[2] * 2
+    return _Raw.resizeBilinear(images: images,
+                               size: Tensor([Int32(newHeight), Int32(newWidth)]),
+                               alignCorners: true)
+}
+
+public func vjpResize2xBilinear(images: Tensor<Float>) -> (Tensor<Float>, (Tensor<Float>)->Tensor<Float>) {
+    let resized = resize2xBilinear(images: images)
+    return (resized, { v in
+        _Raw.resizeBilinearGrad(grads: v, originalImage: images, alignCorners: true)
+    })
+}

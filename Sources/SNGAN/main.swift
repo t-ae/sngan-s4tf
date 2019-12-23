@@ -7,15 +7,14 @@ import ImageLoader
 let batchSize = 32
 let latentSize = 128
 let enableSpectralNormalization = (G: true, D: true)
-let enableBatchNormalization = (G: true, D: true)
 
 //let lossObj = LSGANLoss()
 //let lossObj = NonSaturatingLoss()
 let lossObj = HingeLoss()
 
 // MARK: - Model definition
-var generator = Generator()
-var discriminator = Discriminator()
+var generator = Generator(upsampleMethod: .bilinear, enableBatchNorm: true)
+var discriminator = Discriminator(downsampleMethod: .avgPool, enableBatchNorm: true)
 
 let optG = Adam(for: generator, learningRate: 2e-4, beta1: 0.5)
 let optD = Adam(for: discriminator, learningRate: 2e-4, beta1: 0.5)
