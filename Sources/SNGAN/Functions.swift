@@ -61,6 +61,9 @@ struct SpectralNorm<L: Layer>: Layer {
 }
 
 func spectralNormalize<L: Layer>(_ layer: inout L) {
+    for kp in layer.recursivelyAllWritableKeyPaths(to: SpectralNorm<Dense<Float>>.self) {
+        layer[keyPath: kp].normalize()
+    }
     for kp in layer.recursivelyAllWritableKeyPaths(to: SpectralNorm<Conv2D<Float>>.self) {
         layer[keyPath: kp].normalize()
     }
