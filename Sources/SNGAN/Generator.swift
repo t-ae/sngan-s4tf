@@ -2,7 +2,7 @@ import TensorFlow
 import TensorBoardX
 
 struct Generator: Layer {
-    enum UpsampleMethod {
+    enum UpsampleMethod: String {
         case convStride, nearestNeighbor, bilinear, depthToSpace
     }
     

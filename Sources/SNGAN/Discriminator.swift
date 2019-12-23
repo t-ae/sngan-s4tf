@@ -2,7 +2,7 @@ import TensorFlow
 import TensorBoardX
 
 struct Discriminator: Layer {
-    enum DownsampleMethod {
+    enum DownsampleMethod: String {
         case convStride, avgPool
     }
     

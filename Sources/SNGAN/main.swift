@@ -6,15 +6,18 @@ import ImageLoader
 // MARK: - Configurations
 let batchSize = 32
 let latentSize = 128
+let upsampleMethod = Generator.UpsampleMethod.bilinear
+let downsampleMethod = Discriminator.DownsampleMethod.avgPool
 let enableSpectralNormalization = (G: true, D: true)
+let enableBatchNorm = (G: true, D: true)
 
 //let lossObj = LSGANLoss()
 //let lossObj = NonSaturatingLoss()
 let lossObj = HingeLoss()
 
 // MARK: - Model definition
-var generator = Generator(upsampleMethod: .bilinear, enableBatchNorm: true)
-var discriminator = Discriminator(downsampleMethod: .avgPool, enableBatchNorm: true)
+var generator = Generator(upsampleMethod: upsampleMethod, enableBatchNorm: enableBatchNorm.G)
+var discriminator = Discriminator(downsampleMethod: downsampleMethod, enableBatchNorm: enableBatchNorm.D)
 
 let optG = Adam(for: generator, learningRate: 2e-4, beta1: 0.5)
 let optD = Adam(for: discriminator, learningRate: 2e-4, beta1: 0.5)
@@ -40,7 +43,8 @@ let plotGridCols = 8
 let testNoise = sampleNoise(batchSize: plotGridCols*plotGridCols)
 
 // MARK: - Plot
-let writer = SummaryWriter(logdir: URL(fileURLWithPath: "./output/\(lossObj.name)"))
+let logName = "\(lossObj.name)_\(upsampleMethod.rawValue)_\(downsampleMethod.rawValue)"
+let writer = SummaryWriter(logdir: URL(fileURLWithPath: "./output/\(logName)"))
 func plotImages(tag: String, images: Tensor<Float>, globalStep: Int) {
     let height = images.shape[1]
     let width = images.shape[2]
@@ -52,6 +56,15 @@ func plotImages(tag: String, images: Tensor<Float>, globalStep: Int) {
     grid = grid.clipped(min: 0, max: 1)
     writer.addImage(tag: tag, image: grid, globalStep: globalStep)
 }
+
+// Write configurations
+writer.addText(tag: "\(logName)/loss", text: lossObj.name)
+writer.addText(tag: "\(logName)/upsampleMethod", text: upsampleMethod.rawValue)
+writer.addText(tag: "\(logName)/downsampleMethod", text: downsampleMethod.rawValue)
+writer.addText(tag: "\(logName)/enableBatchNorm.G", text: String(enableBatchNorm.G))
+writer.addText(tag: "\(logName)/enableBatchNorm.D", text: String(enableBatchNorm.D))
+writer.addText(tag: "\(logName)/enableSpectralNormalization.G", text: String(enableSpectralNormalization.G))
+writer.addText(tag: "\(logName)/enableSpectralNormalization.D", text: String(enableSpectralNormalization.D))
 
 // MARK: - Training loop
 for step in 0..<10_000_000 {
