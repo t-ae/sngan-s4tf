@@ -3,13 +3,13 @@ import TensorBoardX
 
 struct Discriminator: Layer {
     var head = SN(Conv2D(filterShape: (1, 1, 3, 16), filterInitializer: heNormal))
-    var conv1 = SN(Conv2D(filterShape: (3, 3, 16, 32), strides: (2, 2),
+    var conv1 = SN(Conv2D(filterShape: (4, 4, 16, 32), strides: (2, 2),
                           padding: .same, filterInitializer: heNormal))
-    var conv2 = SN(Conv2D(filterShape: (3, 3, 32, 64), strides: (2, 2),
+    var conv2 = SN(Conv2D(filterShape: (4, 4, 32, 64), strides: (2, 2),
                           padding: .same, filterInitializer: heNormal))
-    var conv3 = SN(Conv2D(filterShape: (3, 3, 64, 128), strides: (2, 2),
+    var conv3 = SN(Conv2D(filterShape: (4, 4, 64, 128), strides: (2, 2),
                           padding: .same, filterInitializer: heNormal))
-    var conv4 = SN(Conv2D(filterShape: (3, 3, 128, 128), strides: (2, 2),
+    var conv4 = SN(Conv2D(filterShape: (4, 4, 128, 128), strides: (2, 2),
                           padding: .same, filterInitializer: heNormal))
     var tail = SN(Conv2D(filterShape: (4, 4, 128, 1), filterInitializer: heNormal))
     

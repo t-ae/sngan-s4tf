@@ -4,13 +4,13 @@ import TensorBoardX
 struct Generator: Layer {
     var head = SN(TransposedConv2D(filterShape: (4, 4, 128, latentSize),
                                    filterInitializer: heNormal))
-    var conv1 = SN(TransposedConv2D<Float>(filterShape: (3, 3, 128, 128), strides: (2, 2),
+    var conv1 = SN(TransposedConv2D<Float>(filterShape: (4, 4, 128, 128), strides: (2, 2),
                                            padding: .same, filterInitializer: heNormal))
-    var conv2 = SN(TransposedConv2D<Float>(filterShape: (3, 3, 64, 128), strides: (2, 2),
+    var conv2 = SN(TransposedConv2D<Float>(filterShape: (4, 4, 64, 128), strides: (2, 2),
                                            padding: .same, filterInitializer: heNormal))
-    var conv3 = SN(TransposedConv2D<Float>(filterShape: (3, 3, 32, 64), strides: (2, 2),
+    var conv3 = SN(TransposedConv2D<Float>(filterShape: (4, 4, 32, 64), strides: (2, 2),
                                            padding: .same, filterInitializer: heNormal))
-    var conv4 = SN(TransposedConv2D<Float>(filterShape: (3, 3, 16, 32), strides: (2, 2),
+    var conv4 = SN(TransposedConv2D<Float>(filterShape: (4, 4, 16, 32), strides: (2, 2),
                                            padding: .same, filterInitializer: heNormal))
     
     var bn0 = BatchNorm<Float>(featureCount: 128)
@@ -41,6 +41,8 @@ struct Generator: Layer {
             x = lrelu(conv4(x)) // [-1, 64, 64, 16]
         }
         x = tail(x)
+        
+        precondition(x.shape == [input.shape[0], 64, 64, 3], "Invalid shape: \(x.shape)")
         
         return x
     }
