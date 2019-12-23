@@ -1,0 +1,25 @@
+{
+  "object": {
+    "pins": [
+      {
+        "package": "ImageLoader",
+        "repositoryURL": "https://github.com/t-ae/image-loader.git",
+        "state": {
+          "branch": null,
+          "revision": "3c46faae0adf0c0c1ef0fdbae573ae6403fa61cc",
+          "version": "0.0.3"
+        }
+      },
+      {
+        "package": "TensorBoardX",
+        "repositoryURL": "https://github.com/t-ae/tensorboardx-s4tf.git",
+        "state": {
+          "branch": null,
+          "revision": "2e65acf5ecf23f8d24c4f1d53a3f59286ae488c8",
+          "version": "0.0.4"
+        }
+      }
+    ]
+  },
+  "version": 1
+}
