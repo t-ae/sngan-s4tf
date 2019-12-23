@@ -140,3 +140,21 @@ struct ConditionalBN: Layer {
         return x  * gamma + beta
     }
 }
+
+@differentiable(wrt: tensor)
+func depthToSpace(_ tensor: Tensor<Float>, blockSize: Int) -> Tensor<Float> {
+    // Currently _Raw.depthToSpace is not differentiable
+//    _Raw.depthToSpace(tensor, blockSize: Int64(blockSize))
+    
+    let (b, h, w, c) = (tensor.shape[0], tensor.shape[1], tensor.shape[2], tensor.shape[3])
+    let newHeight = h * blockSize
+    let newWidth = w * blockSize
+    let newDepth = c / (blockSize*blockSize)
+    
+    precondition(newDepth*blockSize*blockSize == c)
+    
+    var x = tensor.reshaped(to: [b, h, w, blockSize, blockSize, newDepth])
+    x = x.transposed(permutation: 0, 1, 3, 2, 4, 5)
+    x = x.reshaped(to: [b, newHeight, newWidth, newDepth])
+    return x
+}
