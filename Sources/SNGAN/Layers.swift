@@ -268,10 +268,22 @@ struct InstanceNorm2D<F: TensorFlowFloatingPoint>: ParameterlessLayer {
     }
 }
 
+// MARK: - Pixel normalization
+// https://arxiv.org/abs/1710.10196
+struct PixelNorm2D<F: TensorFlowFloatingPoint>: ParameterlessLayer {
+    @differentiable
+    func callAsFunction(_ input: Tensor<Float>) -> Tensor<Float> {
+        precondition(input.rank == 4)
+        
+        let sqmean = input.squared().mean(alongAxes: 3)
+        return input * rsqrt(sqmean + 1e-8)
+    }
+}
+
 // MARK: - Normalization selector
 struct XNorm: Layer {
     enum Method: String, Codable {
-        case none, instanceNorm, batchNorm
+        case none, instanceNorm, batchNorm, pixelNorm
     }
     
     @noDerivative
@@ -279,12 +291,14 @@ struct XNorm: Layer {
     
     var batchNorm: BatchNorm<Float>
     var instanceNorm: InstanceNorm2D<Float>
+    var pixelNorm: PixelNorm2D<Float>
     
     init(method: Method, dim: Int) {
         self.method = method
         
         batchNorm = BatchNorm(featureCount: dim)
         instanceNorm = InstanceNorm2D()
+        pixelNorm = PixelNorm2D()
     }
     
     @differentiable
@@ -296,6 +310,8 @@ struct XNorm: Layer {
             return instanceNorm(input)
         case .batchNorm:
             return batchNorm(input)
+        case .pixelNorm:
+            return pixelNorm(input)
         }
     }
 }
