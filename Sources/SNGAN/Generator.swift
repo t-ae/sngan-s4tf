@@ -4,23 +4,19 @@ import TensorBoardX
 struct Generator: Layer {
     struct Options: Codable {
         var latentSize: Int
-        var upsampleMethod: UpsampleMethod
+        var upsampleMethod: UpSamplingConv2D.Method
         var enableSpectralNorm: Bool
         var enableBatchNorm: Bool
-    }
-    
-    enum UpsampleMethod: String, Codable {
-        case convStride, nearestNeighbor, bilinear, depthToSpace
     }
     
     @noDerivative
     var options: Options
     
     var head: SN<TransposedConv2D<Float>>
-    var conv1: SN<TransposedConv2D<Float>>
-    var conv2: SN<TransposedConv2D<Float>>
-    var conv3: SN<TransposedConv2D<Float>>
-    var conv4: SN<TransposedConv2D<Float>>
+    var conv1: UpSamplingConv2D
+    var conv2: UpSamplingConv2D
+    var conv3: UpSamplingConv2D
+    var conv4: UpSamplingConv2D
     var tail: Conv2D<Float>
     
     var bn0: Configurable<BatchNorm<Float>>
@@ -32,19 +28,16 @@ struct Generator: Layer {
     init(options: Options) {
         self.options = options
         
-        let convStride = options.upsampleMethod == .convStride ? (2, 2) : (1, 1)
-        let depthFactor = options.upsampleMethod == .depthToSpace ? 4 : 1
-        
         head = SN(TransposedConv2D(filterShape: (4, 4, 128, options.latentSize),
                                    filterInitializer: heNormal))
-        conv1 = SN(TransposedConv2D<Float>(filterShape: (4, 4, 128*depthFactor, 128), strides: convStride,
-                                           padding: .same, filterInitializer: heNormal))
-        conv2 = SN(TransposedConv2D<Float>(filterShape: (4, 4, 64*depthFactor, 128), strides: convStride,
-                                           padding: .same, filterInitializer: heNormal))
-        conv3 = SN(TransposedConv2D<Float>(filterShape: (4, 4, 32*depthFactor, 64), strides: convStride,
-                                           padding: .same, filterInitializer: heNormal))
-        conv4 = SN(TransposedConv2D<Float>(filterShape: (4, 4, 16*depthFactor, 32), strides: convStride,
-                                           padding: .same, filterInitializer: heNormal))
+        conv1 = UpSamplingConv2D(inputDim: 128, outputDim: 128, kernelSize: 4,
+                                 method: options.upsampleMethod)
+        conv2 = UpSamplingConv2D(inputDim: 128, outputDim: 64, kernelSize: 4,
+                                 method: options.upsampleMethod)
+        conv3 = UpSamplingConv2D(inputDim: 64, outputDim: 32, kernelSize: 4,
+                                 method: options.upsampleMethod)
+        conv4 = UpSamplingConv2D(inputDim: 32, outputDim: 16, kernelSize: 4,
+                                 method: options.upsampleMethod)
         tail = Conv2D<Float>(filterShape: (3, 3, 16, 3), padding: .same,
                              activation: tanh, filterInitializer: heNormal)
         
@@ -69,36 +62,16 @@ struct Generator: Layer {
         x = x.reshaped(to: [-1, 1, 1, latentSize])
         
         x = lrelu(bn0(head(x))) // [-1, 4, 4, 128]
-        x = conv1(x)
-        x = lrelu(bn1(upsample(x))) // [-1, 8, 8, 128]
-        x = conv2(x)
-        x = lrelu(bn2(upsample(x))) // [-1, 16, 16, 64]
-        x = conv3(x)
-        x = lrelu(bn3(upsample(x))) // [-1, 32, 32, 32]
-        x = conv4(x)
-        x = lrelu(bn4(upsample(x))) // [-1, 64, 64, 16]
+        x = lrelu(bn1(conv1(x))) // [-1, 8, 8, 128]
+        x = lrelu(bn2(conv2(x))) // [-1, 16, 16, 64]
+        x = lrelu(bn3(conv3(x))) // [-1, 32, 32, 32]
+        x = lrelu(bn4(conv4(x))) // [-1, 64, 64, 16]
         
         x = tail(x)
         
         precondition(x.shape == [input.shape[0], 64, 64, 3], "Invalid shape: \(x.shape)")
         
         return x
-    }
-    
-    var upsampling = UpSampling2D<Float>(size: 2)
-    
-    @differentiable
-    func upsample(_ tensor: Tensor<Float>) -> Tensor<Float> {
-        switch options.upsampleMethod {
-        case .convStride:
-            return tensor
-        case .nearestNeighbor:
-            return upsampling(tensor)
-        case .bilinear:
-            return resize2xBilinear(images: tensor)
-        case .depthToSpace:
-            return depthToSpace(tensor, blockSize: 2)
-        }
     }
     
     func writeHistograms(writer: SummaryWriter, globalStep: Int) {
