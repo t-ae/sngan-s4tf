@@ -1,9 +1,5 @@
 import TensorFlow
 
-func resize(images: Tensor<Float>, width: Int, height: Int) -> Tensor<Float> {
-    _Raw.resizeBilinear(images: images, size: Tensor<Int32>([Int32(height), Int32(width)]))
-}
-
 @differentiable
 func lrelu(_ tensor: Tensor<Float>) -> Tensor<Float> {
     leakyRelu(tensor)
@@ -20,7 +16,7 @@ func heNormal(shape: TensorShape) -> Tensor<Float> {
 
 @differentiable(wrt: tensor)
 func depthToSpace(_ tensor: Tensor<Float>, blockSize: Int) -> Tensor<Float> {
-    // Currently _Raw.depthToSpace is not differentiable
+    // Currently _Raw.depthToSpace has no grad function
 //    _Raw.depthToSpace(tensor, blockSize: Int64(blockSize))
     
     let (b, h, w, c) = (tensor.shape[0], tensor.shape[1], tensor.shape[2], tensor.shape[3])
