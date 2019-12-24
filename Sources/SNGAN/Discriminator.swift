@@ -19,7 +19,7 @@ struct Discriminator: Layer {
     var conv4: DownSamplingConv2D
     var tail: SN<Conv2D<Float>>
     
-    var stdConcat: MinibatchStdConcat
+    var stdConcat: MinibatchStdConcat<Float>
     
     var bn0: XNorm
     var bn1: XNorm

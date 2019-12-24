@@ -1,21 +1,24 @@
 import TensorFlow
 
 @differentiable
-func lrelu(_ tensor: Tensor<Float>) -> Tensor<Float> {
+func lrelu<Scalar: TensorFlowFloatingPoint>(_ tensor: Tensor<Scalar>) -> Tensor<Scalar> {
     leakyRelu(tensor)
 }
 
-func l2normalize(_ tensor: Tensor<Float>) -> Tensor<Float> {
+func l2normalize<Scalar: TensorFlowFloatingPoint>(_ tensor: Tensor<Scalar>) -> Tensor<Scalar> {
     return tensor / sqrt(pow(tensor, 2).sum() + 1e-8)
 }
 
-func heNormal(shape: TensorShape) -> Tensor<Float> {
+func heNormal<Scalar: TensorFlowFloatingPoint>(shape: TensorShape) -> Tensor<Scalar> {
     let out = shape.dimensions.dropLast().reduce(1, *)
-    return Tensor<Float>(randomNormal: shape) * sqrt(2 / Float(out))
+    return Tensor<Scalar>(randomNormal: shape) * sqrt(2 / Scalar(out))
 }
 
 @differentiable(wrt: tensor)
-func depthToSpace(_ tensor: Tensor<Float>, blockSize: Int) -> Tensor<Float> {
+func depthToSpace<Scalar: TensorFlowFloatingPoint>(
+    _ tensor: Tensor<Scalar>,
+    blockSize: Int
+) -> Tensor<Scalar> {
     // Currently _Raw.depthToSpace has no grad function
 //    _Raw.depthToSpace(tensor, blockSize: Int64(blockSize))
     
