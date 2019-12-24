@@ -59,7 +59,7 @@ struct Generator: Layer {
     func callAsFunction(_ input: Tensor<Float>) -> Tensor<Float> {
         var x = input
         
-        x = x.reshaped(to: [-1, 1, 1, latentSize])
+        x = x.expandingShape(at: 1, 2) // [-1, 1, 1, latentSize]
         
         x = lrelu(bn0(head(x))) // [-1, 4, 4, 128]
         x = lrelu(bn1(conv1(x))) // [-1, 8, 8, 128]

@@ -49,7 +49,7 @@ let loader = try ImageLoader(
 print("Total images: \(loader.entries.count)")
 
 let plotGridCols = 8
-let testNoise = sampleNoise(batchSize: plotGridCols*plotGridCols)
+let testNoise = sampleNoise(batchSize: plotGridCols*plotGridCols, latentSize: latentSize)
 
 // MARK: - Plot
 let logName = "\(lossObj.name)_\(generatorOptions.upsampleMethod.rawValue)_\(discriminatorOptions.downsampleMethod.rawValue)"
@@ -78,7 +78,7 @@ for step in 0..<10_000_000 {
     var (reals, _) = loader.nextBatch(size: batchSize)
     reals = reals * 2 - 1
     
-    let noises = sampleNoise(batchSize: batchSize)
+    let noises = sampleNoise(batchSize: batchSize, latentSize: latentSize)
     
     // MARK: Train generator
     generator.preTrain()
