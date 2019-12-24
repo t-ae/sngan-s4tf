@@ -255,3 +255,47 @@ struct Configurable<L: Layer>: Layer where L.Input == L.Output {
         }
     }
 }
+
+// MARK: - Instance normalization
+struct InstanceNorm2D<F: TensorFlowFloatingPoint>: ParameterlessLayer {
+    @differentiable
+    func callAsFunction(_ input: Tensor<Float>) -> Tensor<Float> {
+        precondition(input.rank == 4)
+        
+        let mean = input.mean(alongAxes: 1, 2)
+        let variance = squaredDifference(input, mean).mean(alongAxes: 1, 2)
+        return input * rsqrt(variance + 1e-8)
+    }
+}
+
+// MARK: - Normalization selector
+struct XNorm: Layer {
+    enum Method: String, Codable {
+        case none, instanceNorm, batchNorm
+    }
+    
+    @noDerivative
+    var method: Method
+    
+    var batchNorm: BatchNorm<Float>
+    var instanceNorm: InstanceNorm2D<Float>
+    
+    init(method: Method, dim: Int) {
+        self.method = method
+        
+        batchNorm = BatchNorm(featureCount: dim)
+        instanceNorm = InstanceNorm2D()
+    }
+    
+    @differentiable
+    func callAsFunction(_ input: Tensor<Float>) -> Tensor<Float> {
+        switch method {
+        case .none:
+            return input
+        case .instanceNorm:
+            return instanceNorm(input)
+        case .batchNorm:
+            return batchNorm(input)
+        }
+    }
+}

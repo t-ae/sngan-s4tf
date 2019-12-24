@@ -6,7 +6,7 @@ struct Generator: Layer {
         var latentSize: Int
         var upsampleMethod: UpSamplingConv2D.Method
         var enableSpectralNorm: Bool
-        var enableBatchNorm: Bool
+        var normMethod: XNorm.Method
     }
     
     @noDerivative
@@ -19,11 +19,11 @@ struct Generator: Layer {
     var conv4: UpSamplingConv2D
     var tail: Conv2D<Float>
     
-    var bn0: Configurable<BatchNorm<Float>>
-    var bn1: Configurable<BatchNorm<Float>>
-    var bn2: Configurable<BatchNorm<Float>>
-    var bn3: Configurable<BatchNorm<Float>>
-    var bn4: Configurable<BatchNorm<Float>>
+    var bn0: XNorm
+    var bn1: XNorm
+    var bn2: XNorm
+    var bn3: XNorm
+    var bn4: XNorm
     
     init(options: Options) {
         self.options = options
@@ -41,12 +41,11 @@ struct Generator: Layer {
         tail = Conv2D<Float>(filterShape: (3, 3, 16, 3), padding: .same,
                              activation: tanh, filterInitializer: heNormal)
         
-        let enableBatchNorm = options.enableBatchNorm
-        bn0 = Configurable(BatchNorm<Float>(featureCount: 128), enabled: enableBatchNorm)
-        bn1 = Configurable(BatchNorm<Float>(featureCount: 128), enabled: enableBatchNorm)
-        bn2 = Configurable(BatchNorm<Float>(featureCount: 64), enabled: enableBatchNorm)
-        bn3 = Configurable(BatchNorm<Float>(featureCount: 32), enabled: enableBatchNorm)
-        bn4 = Configurable(BatchNorm<Float>(featureCount: 16), enabled: enableBatchNorm)
+        bn0 = XNorm(method: options.normMethod, dim: 128)
+        bn1 = XNorm(method: options.normMethod, dim: 128)
+        bn2 = XNorm(method: options.normMethod, dim: 64)
+        bn3 = XNorm(method: options.normMethod, dim: 32)
+        bn4 = XNorm(method: options.normMethod, dim: 16)
     }
     
     mutating func preTrain() {
