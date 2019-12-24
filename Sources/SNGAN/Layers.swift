@@ -3,6 +3,7 @@ import TensorFlow
 typealias SN = SpectralNorm
 
 // MARK: - Spectral normalization
+// https://arxiv.org/abs/1802.05957
 struct SpectralNorm<L: Layer>: Layer {
     var layer: L
     
@@ -129,7 +130,7 @@ struct UpSamplingConv2D: Layer {
     }
 }
 
-// MARK: - Downsample conv
+// MARK: - Downsampling conv
 struct DownSamplingConv2D: Layer {
     enum Method: String, Codable {
         case convStride, avgPool
@@ -257,6 +258,7 @@ struct Configurable<L: Layer>: Layer where L.Input == L.Output {
 }
 
 // MARK: - Instance normalization
+// https://arxiv.org/abs/1607.08022
 struct InstanceNorm2D<F: TensorFlowFloatingPoint>: ParameterlessLayer {
     @differentiable
     func callAsFunction(_ input: Tensor<Float>) -> Tensor<Float> {
