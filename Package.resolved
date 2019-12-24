@@ -15,8 +15,8 @@
         "repositoryURL": "https://github.com/t-ae/tensorboardx-s4tf.git",
         "state": {
           "branch": null,
-          "revision": "2e65acf5ecf23f8d24c4f1d53a3f59286ae488c8",
-          "version": "0.0.4"
+          "revision": "c97d67511f388fd22daad3c73b6bf077448838a8",
+          "version": "0.0.5"
         }
       }
     ]

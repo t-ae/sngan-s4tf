@@ -6,6 +6,7 @@ import ImageLoader
 // MARK: - Configurations
 let batchSize = 32
 let latentSize = 128
+let nDisUpdate = 5
 
 let generatorOptions = Generator.Options(
     latentSize: latentSize,
@@ -28,8 +29,8 @@ let lossObj = HingeLoss()
 var generator = Generator(options: generatorOptions)
 var discriminator = Discriminator(options: discriminatorOptions)
 
-let optG = Adam(for: generator, learningRate: 2e-4, beta1: 0.5)
-let optD = Adam(for: discriminator, learningRate: 2e-4, beta1: 0.5)
+let optG = Adam(for: generator, learningRate: 2e-4, beta1: 0.0, beta2: 0.9)
+let optD = Adam(for: discriminator, learningRate: 2e-4, beta1: 0.0, beta2: 0.9)
 
 // MARK: - Train/test data
 let args = ProcessInfo.processInfo.arguments
@@ -70,9 +71,14 @@ func plotImages(tag: String, images: Tensor<Float>, globalStep: Int) {
 writer.addText(tag: "\(logName)/loss", text: lossObj.name)
 writer.addText(tag: "\(logName)/generatorOptions", text: generatorOptions.prettyJsonString())
 writer.addText(tag: "\(logName)/discriminatorOptions", text: discriminatorOptions.prettyJsonString())
+writer.addText(tag: "\(logName)/nDisUpdate", text: String(nDisUpdate))
 
 // MARK: - Training loop
 for step in 0..<10_000_000 {
+    if step % 10 == 0 {
+        print("step: \(step)")
+    }
+    
     Context.local.learningPhase = .training
     
     var (reals, _) = loader.nextBatch(size: batchSize)
@@ -81,14 +87,17 @@ for step in 0..<10_000_000 {
     let noises = sampleNoise(batchSize: batchSize, latentSize: latentSize)
     
     // MARK: Train generator
-    generator.preTrain()
-    let (lossG, 𝛁generator) = valueWithGradient(at: generator) { generator -> Tensor<Float> in
-        let fakes = generator(noises)
-        let scores = discriminator(fakes)
-        let loss = lossObj.lossG(scores)
-        return loss
+    if step % nDisUpdate == 0 {
+        generator.preTrain()
+        let (lossG, 𝛁generator) = valueWithGradient(at: generator) { generator -> Tensor<Float> in
+            let fakes = generator(noises)
+            let scores = discriminator(fakes)
+            let loss = lossObj.lossG(scores)
+            return loss
+        }
+        optG.update(&generator, along: 𝛁generator)
+        writer.addScalar(tag: "lossG", scalar: lossG.scalarized(), globalStep: step)
     }
-    optG.update(&generator, along: 𝛁generator)
     
     // MARK: Train discrminator
     let fakes = generator(noises)
@@ -101,14 +110,9 @@ for step in 0..<10_000_000 {
         return loss
     }
     optD.update(&discriminator, along: 𝛁discriminator)
-    
-    if step % 10 == 0 {
-        print("\(step): lossG=\(lossG.scalarized()), lossD=\(lossD.scalarized())")
-    }
-    writer.addScalar(tag: "lossG", scalar: lossG.scalarized(), globalStep: step)
     writer.addScalar(tag: "lossD", scalar: lossD.scalarized(), globalStep: step)
     
-    if step % 100 == 0 {
+    if step % 500 == 0 {
         plotImages(tag: "reals", images: reals, globalStep: step)
         plotImages(tag: "fakes", images: fakes, globalStep: step)
         
@@ -121,7 +125,7 @@ for step in 0..<10_000_000 {
         writer.flush()
     }
     
-    if step % 1000 == 0 {
+    if step % 5000 == 0 {
         // Inference
         Context.local.learningPhase = .inference
         let testImage = generator(testNoise)
