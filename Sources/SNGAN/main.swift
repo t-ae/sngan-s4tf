@@ -6,18 +6,27 @@ import ImageLoader
 // MARK: - Configurations
 let batchSize = 32
 let latentSize = 128
-let upsampleMethod = Generator.UpsampleMethod.bilinear
-let downsampleMethod = Discriminator.DownsampleMethod.avgPool
-let enableSpectralNormalization = (G: true, D: true)
-let enableBatchNorm = (G: true, D: true)
+
+let generatorOptions = Generator.Options(
+    latentSize: latentSize,
+    upsampleMethod: .bilinear,
+    enableSpectralNorm: true,
+    enableBatchNorm: true
+)
+let discriminatorOptions = Discriminator.Options(
+    downsampleMethod: .avgPool,
+    enableSpectralNorm: true,
+    enableBatchNorm: true,
+    enableMinibatchStdConcat: true
+)
 
 //let lossObj = LSGANLoss()
 //let lossObj = NonSaturatingLoss()
 let lossObj = HingeLoss()
 
 // MARK: - Model definition
-var generator = Generator(upsampleMethod: upsampleMethod, enableBatchNorm: enableBatchNorm.G)
-var discriminator = Discriminator(downsampleMethod: downsampleMethod, enableBatchNorm: enableBatchNorm.D)
+var generator = Generator(options: generatorOptions)
+var discriminator = Discriminator(options: discriminatorOptions)
 
 let optG = Adam(for: generator, learningRate: 2e-4, beta1: 0.5)
 let optD = Adam(for: discriminator, learningRate: 2e-4, beta1: 0.5)
@@ -43,7 +52,7 @@ let plotGridCols = 8
 let testNoise = sampleNoise(batchSize: plotGridCols*plotGridCols)
 
 // MARK: - Plot
-let logName = "\(lossObj.name)_\(upsampleMethod.rawValue)_\(downsampleMethod.rawValue)"
+let logName = "\(lossObj.name)_\(generatorOptions.upsampleMethod.rawValue)_\(discriminatorOptions.downsampleMethod.rawValue)"
 let writer = SummaryWriter(logdir: URL(fileURLWithPath: "./output/\(logName)"))
 func plotImages(tag: String, images: Tensor<Float>, globalStep: Int) {
     let height = images.shape[1]
@@ -59,12 +68,8 @@ func plotImages(tag: String, images: Tensor<Float>, globalStep: Int) {
 
 // Write configurations
 writer.addText(tag: "\(logName)/loss", text: lossObj.name)
-writer.addText(tag: "\(logName)/upsampleMethod", text: upsampleMethod.rawValue)
-writer.addText(tag: "\(logName)/downsampleMethod", text: downsampleMethod.rawValue)
-writer.addText(tag: "\(logName)/enableBatchNorm.G", text: String(enableBatchNorm.G))
-writer.addText(tag: "\(logName)/enableBatchNorm.D", text: String(enableBatchNorm.D))
-writer.addText(tag: "\(logName)/enableSpectralNormalization.G", text: String(enableSpectralNormalization.G))
-writer.addText(tag: "\(logName)/enableSpectralNormalization.D", text: String(enableSpectralNormalization.D))
+writer.addText(tag: "\(logName)/generatorOptions", text: generatorOptions.prettyJsonString())
+writer.addText(tag: "\(logName)/discriminatorOptions", text: discriminatorOptions.prettyJsonString())
 
 // MARK: - Training loop
 for step in 0..<10_000_000 {
@@ -76,9 +81,7 @@ for step in 0..<10_000_000 {
     let noises = sampleNoise(batchSize: batchSize)
     
     // MARK: Train generator
-    if enableSpectralNormalization.G {
-        spectralNormalize(&generator)
-    }
+    generator.preTrain()
     let (lossG, 𝛁generator) = valueWithGradient(at: generator) { generator -> Tensor<Float> in
         let fakes = generator(noises)
         let scores = discriminator(fakes)
@@ -89,9 +92,7 @@ for step in 0..<10_000_000 {
     
     // MARK: Train discrminator
     let fakes = generator(noises)
-    if enableSpectralNormalization.D {
-        spectralNormalize(&discriminator)
-    }
+    discriminator.preTrain()
     let (lossD, 𝛁discriminator) = valueWithGradient(at: discriminator) { discriminator -> Tensor<Float> in
         let fakeScores = discriminator(fakes)
         

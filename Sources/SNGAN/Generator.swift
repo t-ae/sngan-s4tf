@@ -2,12 +2,19 @@ import TensorFlow
 import TensorBoardX
 
 struct Generator: Layer {
-    enum UpsampleMethod: String {
+    struct Options: Codable {
+        var latentSize: Int
+        var upsampleMethod: UpsampleMethod
+        var enableSpectralNorm: Bool
+        var enableBatchNorm: Bool
+    }
+    
+    enum UpsampleMethod: String, Codable {
         case convStride, nearestNeighbor, bilinear, depthToSpace
     }
     
     @noDerivative
-    var upsampleMethod: UpsampleMethod
+    var options: Options
     
     var head: SN<TransposedConv2D<Float>>
     var conv1: SN<TransposedConv2D<Float>>
@@ -22,13 +29,13 @@ struct Generator: Layer {
     var bn3: Configurable<BatchNorm<Float>>
     var bn4: Configurable<BatchNorm<Float>>
     
-    init(upsampleMethod: UpsampleMethod, enableBatchNorm: Bool) {
-        self.upsampleMethod = upsampleMethod
+    init(options: Options) {
+        self.options = options
         
-        let convStride = upsampleMethod == .convStride ? (2, 2) : (1, 1)
-        let depthFactor = upsampleMethod == .depthToSpace ? 4 : 1
+        let convStride = options.upsampleMethod == .convStride ? (2, 2) : (1, 1)
+        let depthFactor = options.upsampleMethod == .depthToSpace ? 4 : 1
         
-        head = SN(TransposedConv2D(filterShape: (4, 4, 128, latentSize),
+        head = SN(TransposedConv2D(filterShape: (4, 4, 128, options.latentSize),
                                    filterInitializer: heNormal))
         conv1 = SN(TransposedConv2D<Float>(filterShape: (4, 4, 128*depthFactor, 128), strides: convStride,
                                            padding: .same, filterInitializer: heNormal))
@@ -41,11 +48,18 @@ struct Generator: Layer {
         tail = Conv2D<Float>(filterShape: (3, 3, 16, 3), padding: .same,
                              activation: tanh, filterInitializer: heNormal)
         
+        let enableBatchNorm = options.enableBatchNorm
         bn0 = Configurable(BatchNorm<Float>(featureCount: 128), enabled: enableBatchNorm)
         bn1 = Configurable(BatchNorm<Float>(featureCount: 128), enabled: enableBatchNorm)
         bn2 = Configurable(BatchNorm<Float>(featureCount: 64), enabled: enableBatchNorm)
         bn3 = Configurable(BatchNorm<Float>(featureCount: 32), enabled: enableBatchNorm)
         bn4 = Configurable(BatchNorm<Float>(featureCount: 16), enabled: enableBatchNorm)
+    }
+    
+    mutating func preTrain() {
+        if(options.enableSpectralNorm) {
+            spectralNormalize(&self)
+        }
     }
     
     @differentiable
@@ -75,7 +89,7 @@ struct Generator: Layer {
     
     @differentiable
     func upsample(_ tensor: Tensor<Float>) -> Tensor<Float> {
-        switch upsampleMethod {
+        switch options.upsampleMethod {
         case .convStride:
             return tensor
         case .nearestNeighbor:

@@ -2,12 +2,19 @@ import TensorFlow
 import TensorBoardX
 
 struct Discriminator: Layer {
-    enum DownsampleMethod: String {
+    struct Options: Codable {
+        var downsampleMethod: DownsampleMethod
+        var enableSpectralNorm: Bool
+        var enableBatchNorm: Bool
+        var enableMinibatchStdConcat: Bool
+    }
+    
+    enum DownsampleMethod: String, Codable {
         case convStride, avgPool
     }
     
     @noDerivative
-    var downsampleMethod: DownsampleMethod
+    var options: Options
     
     var head: SN<Conv2D<Float>>
     var conv1: SN<Conv2D<Float>>
@@ -16,16 +23,18 @@ struct Discriminator: Layer {
     var conv4: SN<Conv2D<Float>>
     var tail: SN<Conv2D<Float>>
     
+    var stdConcat: MinibatchStdConcat
+    
     var bn0: Configurable<BatchNorm<Float>>
     var bn1: Configurable<BatchNorm<Float>>
     var bn2: Configurable<BatchNorm<Float>>
     var bn3: Configurable<BatchNorm<Float>>
     var bn4: Configurable<BatchNorm<Float>>
     
-    init(downsampleMethod: DownsampleMethod, enableBatchNorm: Bool) {
-        self.downsampleMethod = downsampleMethod
+    init(options: Options) {
+        self.options = options
         
-        let convStride = downsampleMethod == .convStride ? (2, 2) : (1, 1)
+        let convStride = options.downsampleMethod == .convStride ? (2, 2) : (1, 1)
         head = SN(Conv2D(filterShape: (1, 1, 3, 16), filterInitializer: heNormal))
         conv1 = SN(Conv2D(filterShape: (4, 4, 16, 32), strides: convStride,
                           padding: .same, filterInitializer: heNormal))
@@ -35,13 +44,23 @@ struct Discriminator: Layer {
                           padding: .same, filterInitializer: heNormal))
         conv4 = SN(Conv2D(filterShape: (4, 4, 128, 128), strides: convStride,
                           padding: .same, filterInitializer: heNormal))
-        tail = SN(Conv2D(filterShape: (4, 4, 128, 1), filterInitializer: heNormal))
         
+        let stdDim = options.enableMinibatchStdConcat ? 1 : 0
+        stdConcat = MinibatchStdConcat(groupSize: 4)
+        tail = SN(Conv2D(filterShape: (4, 4, 128 + stdDim, 1), filterInitializer: heNormal))
+        
+        let enableBatchNorm = options.enableBatchNorm
         bn0 = Configurable(BatchNorm<Float>(featureCount: 16), enabled: enableBatchNorm)
         bn1 = Configurable(BatchNorm<Float>(featureCount: 32), enabled: enableBatchNorm)
         bn2 = Configurable(BatchNorm<Float>(featureCount: 64), enabled: enableBatchNorm)
         bn3 = Configurable(BatchNorm<Float>(featureCount: 128), enabled: enableBatchNorm)
         bn4 = Configurable(BatchNorm<Float>(featureCount: 128), enabled: enableBatchNorm)
+    }
+    
+    mutating func preTrain() {
+        if(options.enableSpectralNorm) {
+            spectralNormalize(&self)
+        }
     }
     
     @differentiable
@@ -57,6 +76,9 @@ struct Discriminator: Layer {
         x = downsample(x) // [-1, 8, 8, 128]
         x = lrelu(bn4(conv4(x)))
         x = downsample(x) // [-1, 4, 4, 128]
+        if options.enableMinibatchStdConcat {
+            x = stdConcat(x)  // [-1, 4, 4, 129]
+        }
         x = tail(x) // [-1, 1, 1, 1]
         x = x.squeezingShape(at: [1, 2])
         
@@ -67,7 +89,7 @@ struct Discriminator: Layer {
     
     @differentiable
     func downsample(_ tensor: Tensor<Float>) -> Tensor<Float> {
-        switch downsampleMethod {
+        switch options.downsampleMethod {
         case .convStride:
             return tensor
         case .avgPool:
