@@ -119,6 +119,7 @@ struct Discriminator: Layer {
         x = block2(x) // [-1, 16, 16, 64]
         x = block3(x) // [-1, 8, 8, 128]
         x = block4(x) // [-1, 4, 4, 128]
+        x = lrelu(x)
         
         if options.enableMinibatchStdConcat {
             x = stdConcat(x)  // [-1, 4, 4, 129]
