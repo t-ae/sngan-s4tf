@@ -3,6 +3,9 @@ import TensorFlow
 import TensorBoardX
 import ImageLoader
 
+Context.local.randomSeed = (42, 42)
+let rng = XorshiftRandomNumberGenerator()
+
 // MARK: - Configurations
 let batchSize = 32
 let latentSize = 128
@@ -46,7 +49,9 @@ let loader = try ImageLoader(
     transforms: [
         Transforms.resizeBilinear(aspectFill: 64),
         Transforms.centerCrop(width: 64, height: 64)
-    ]
+    ],
+    parallel: true,
+    rng: rng
 )
 print("Total images: \(loader.entries.count)")
 

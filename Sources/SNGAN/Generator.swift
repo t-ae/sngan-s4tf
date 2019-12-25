@@ -145,7 +145,6 @@ struct Generator: Layer {
     
     func writeHistograms(writer: SummaryWriter, globalStep: Int) {
         head.writeHistograms(writer: writer, tag: "G/head", globalStep: globalStep)
-        writer.addHistogram(tag: "G/head.filter", values: head.filter, globalStep: globalStep)
         block1.writeHistograms(writer: writer, tag: "G/block1", globalStep: globalStep)
         block2.writeHistograms(writer: writer, tag: "G/block2", globalStep: globalStep)
         block3.writeHistograms(writer: writer, tag: "G/block3", globalStep: globalStep)
