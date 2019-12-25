@@ -1,15 +1,15 @@
 import TensorFlow
 
-struct MinibatchStdConcat<Scalar: TensorFlowFloatingPoint>: ParameterlessLayer {
+public struct MinibatchStdConcat<Scalar: TensorFlowFloatingPoint>: ParameterlessLayer {
     @noDerivative
-    var groupSize: Int
+    public let groupSize: Int
     
-    init(groupSize: Int) {
+    public init(groupSize: Int) {
         self.groupSize = groupSize
     }
     
     @differentiable
-    func callAsFunction(_ input: Tensor<Scalar>) -> Tensor<Scalar> {
+    public func callAsFunction(_ input: Tensor<Scalar>) -> Tensor<Scalar> {
         precondition(input.rank == 4)
         
         let (b, h, w, c) = (input.shape[0], input.shape[1], input.shape[2], input.shape[3])

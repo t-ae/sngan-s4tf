@@ -1,21 +1,12 @@
 import TensorFlow
 
-@differentiable
-func lrelu<Scalar: TensorFlowFloatingPoint>(_ tensor: Tensor<Scalar>) -> Tensor<Scalar> {
-    leakyRelu(tensor)
-}
-
-func l2normalize<Scalar: TensorFlowFloatingPoint>(_ tensor: Tensor<Scalar>) -> Tensor<Scalar> {
-    return tensor / sqrt(pow(tensor, 2).sum() + 1e-8)
-}
-
-func heNormal<Scalar: TensorFlowFloatingPoint>(shape: TensorShape) -> Tensor<Scalar> {
+public func heNormal<Scalar: TensorFlowFloatingPoint>(shape: TensorShape) -> Tensor<Scalar> {
     let out = shape.dimensions.dropLast().reduce(1, *)
     return Tensor<Scalar>(randomNormal: shape) * sqrt(2 / Scalar(out))
 }
 
 @differentiable(wrt: tensor)
-func depthToSpace<Scalar: TensorFlowFloatingPoint>(
+public func depthToSpace<Scalar: TensorFlowFloatingPoint>(
     _ tensor: Tensor<Scalar>,
     blockSize: Int
 ) -> Tensor<Scalar> {

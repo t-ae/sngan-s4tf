@@ -2,13 +2,13 @@ import TensorFlow
 
 // https://arxiv.org/abs/1710.10196
 
-struct EqualizedDense<Scalar: TensorFlowFloatingPoint>: Layer {
-    var dense: Dense<Scalar>
+public struct EqualizedDense<Scalar: TensorFlowFloatingPoint>: Layer {
+    public var dense: Dense<Scalar>
     
     @noDerivative
-    var scale: Scalar
+    public let scale: Scalar
     
-    init(_ dense: Dense<Scalar>, enableScaling: Bool = true) {
+    public init(_ dense: Dense<Scalar>, enableScaling: Bool = true) {
         self.dense = dense
         precondition(dense.weight.rank == 2, "batched dense is not supported.")
         
@@ -28,13 +28,13 @@ struct EqualizedDense<Scalar: TensorFlowFloatingPoint>: Layer {
     }
 }
 
-struct EqualizedConv2D<Scalar: TensorFlowFloatingPoint>: Layer {
-    var conv: Conv2D<Scalar>
+public struct EqualizedConv2D<Scalar: TensorFlowFloatingPoint>: Layer {
+    public var conv: Conv2D<Scalar>
     
     @noDerivative
-    var scale: Scalar
+    public let scale: Scalar
     
-    init(_ conv: Conv2D<Scalar>, enableScaling: Bool = true) {
+    public init(_ conv: Conv2D<Scalar>, enableScaling: Bool = true) {
         self.conv = conv
         
         let std = conv.filter.standardDeviation().scalarized()
@@ -49,7 +49,7 @@ struct EqualizedConv2D<Scalar: TensorFlowFloatingPoint>: Layer {
     
     @differentiable
     public func callAsFunction(_ input: Tensor<Scalar>) -> Tensor<Scalar> {
-        return conv.activation(conv2D(
+        conv.activation(conv2D(
             input,
             filter: conv.filter * scale,
             strides: (1, conv.strides.0, conv.strides.1, 1),

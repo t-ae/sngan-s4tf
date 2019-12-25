@@ -1,5 +1,10 @@
 import TensorFlow
 
+@differentiable
+public func lrelu<Scalar: TensorFlowFloatingPoint>(_ tensor: Tensor<Scalar>) -> Tensor<Scalar> {
+    leakyRelu(tensor)
+}
+
 // MARK: - Upsampling conv
 struct UpSamplingConv2D: Layer {
     enum Method: String, Codable {

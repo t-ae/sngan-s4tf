@@ -1,27 +1,27 @@
 import TensorFlow
 
-struct ConditionalBatchNorm<Scalar: TensorFlowFloatingPoint>: Layer {
-    struct Input: Differentiable {
-        var feature: Tensor<Scalar>
+public struct ConditionalBatchNorm<Scalar: TensorFlowFloatingPoint>: Layer {
+    public struct Input: Differentiable {
+        public var feature: Tensor<Scalar>
         @noDerivative
-        var label: Tensor<Int32>
+        public var label: Tensor<Int32>
         
         @differentiable
-        init(feature: Tensor<Scalar>, label: Tensor<Int32>) {
+        public init(feature: Tensor<Scalar>, label: Tensor<Int32>) {
             self.feature = feature
             self.label = label
         }
     }
     
     @noDerivative
-    let featureCount: Int
+    public let featureCount: Int
     
-    var bn: BatchNorm<Scalar>
+    public var bn: BatchNorm<Scalar>
     
-    var gammaEmb: Embedding<Scalar>
-    var betaEmb: Embedding<Scalar>
+    public var gammaEmb: Embedding<Scalar>
+    public var betaEmb: Embedding<Scalar>
     
-    init(featureCount: Int) {
+    public init(featureCount: Int) {
         self.featureCount = featureCount
         self.bn = BatchNorm(featureCount: featureCount)
         self.gammaEmb = Embedding(embeddings: Tensor<Scalar>(ones: [10, featureCount]))
@@ -29,7 +29,7 @@ struct ConditionalBatchNorm<Scalar: TensorFlowFloatingPoint>: Layer {
     }
     
     @differentiable
-    func callAsFunction(_ input: Input) -> Tensor<Scalar> {
+    public func callAsFunction(_ input: Input) -> Tensor<Scalar> {
         let x = bn(input.feature)
         
         let gamma = gammaEmb(input.label).reshaped(to: [-1, 1, 1, featureCount])
@@ -40,9 +40,9 @@ struct ConditionalBatchNorm<Scalar: TensorFlowFloatingPoint>: Layer {
 }
 
 // https://arxiv.org/abs/1607.08022
-struct InstanceNorm2D<Scalar: TensorFlowFloatingPoint>: ParameterlessLayer {
+public struct InstanceNorm2D<Scalar: TensorFlowFloatingPoint>: ParameterlessLayer {
     @differentiable
-    func callAsFunction(_ input: Tensor<Scalar>) -> Tensor<Scalar> {
+    public func callAsFunction(_ input: Tensor<Scalar>) -> Tensor<Scalar> {
         precondition(input.rank == 4)
         
         let mean = input.mean(alongAxes: 1, 2)
@@ -52,9 +52,9 @@ struct InstanceNorm2D<Scalar: TensorFlowFloatingPoint>: ParameterlessLayer {
 }
 
 // https://arxiv.org/abs/1710.10196
-struct PixelNorm2D<Scalar: TensorFlowFloatingPoint>: ParameterlessLayer {
+public struct PixelNorm2D<Scalar: TensorFlowFloatingPoint>: ParameterlessLayer {
     @differentiable
-    func callAsFunction(_ input: Tensor<Scalar>) -> Tensor<Scalar> {
+    public func callAsFunction(_ input: Tensor<Scalar>) -> Tensor<Scalar> {
         precondition(input.rank == 4)
         
         let sqmean = input.squared().mean(alongAxes: 3)

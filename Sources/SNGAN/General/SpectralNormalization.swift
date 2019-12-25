@@ -2,21 +2,21 @@ import TensorFlow
 
 // https://arxiv.org/abs/1802.05957
 
-typealias SN = SpectralNorm
+public typealias SN = SpectralNorm
 
-struct SpectralNorm<L: Layer>: Layer {
-    var layer: L
+public struct SpectralNorm<L: Layer>: Layer {
+    public var layer: L
     
     @noDerivative
-    let keyPath: WritableKeyPath<L, Tensor<Float>>
+    public let keyPath: WritableKeyPath<L, Tensor<Float>>
     @noDerivative
-    var v: Tensor<Float>
+    public var v: Tensor<Float>
     @noDerivative
-    let numPowerIterations = 1
+    public let numPowerIterations = 1
     @noDerivative
-    let outputAxis: Int
+    public let outputAxis: Int
     
-    init(layer: L, keyPath: WritableKeyPath<L, Tensor<Float>>, outputAxis: Int) {
+    public init(layer: L, keyPath: WritableKeyPath<L, Tensor<Float>>, outputAxis: Int) {
         self.layer = layer
         self.keyPath = keyPath
         self.outputAxis = outputAxis
@@ -24,7 +24,7 @@ struct SpectralNorm<L: Layer>: Layer {
         v = Tensor<Float>(randomNormal: [1, weight.shape[outputAxis]])
     }
     
-    mutating func normalize() {
+    public mutating func normalize() {
         let weight = layer[keyPath: keyPath]
         let mat = weight.reshaped(to: [-1, weight.shape[outputAxis]]) // [rows, cols]
         
@@ -39,12 +39,12 @@ struct SpectralNorm<L: Layer>: Layer {
     }
     
     @differentiable
-    func callAsFunction(_ input: L.Input) -> L.Output {
+    public func callAsFunction(_ input: L.Input) -> L.Output {
         return layer(input)
     }
 }
 
-func spectralNormalize<L: Layer>(_ layer: inout L) {
+public func spectralNormalize<L: Layer>(_ layer: inout L) {
     for kp in layer.recursivelyAllWritableKeyPaths(to: SpectralNorm<Dense<Float>>.self) {
         layer[keyPath: kp].normalize()
     }
@@ -57,31 +57,35 @@ func spectralNormalize<L: Layer>(_ layer: inout L) {
 }
 
 extension SpectralNorm where L == Dense<Float> {
-    init(_ layer: Dense<Float>) {
+    public init(_ layer: Dense<Float>) {
         self.init(layer: layer, keyPath: \Dense<Float>.weight, outputAxis: 1)
     }
     
-    var weight: Tensor<Float> {
+    public var weight: Tensor<Float> {
         layer.weight
     }
 }
 
 extension SpectralNorm where L == Conv2D<Float> {
-    init(_ layer: Conv2D<Float>) {
+    public init(_ layer: Conv2D<Float>) {
         self.init(layer: layer, keyPath: \Conv2D<Float>.filter, outputAxis: 3)
     }
     
-    var filter: Tensor<Float> {
+    public var filter: Tensor<Float> {
         layer.filter
     }
 }
 
 extension SpectralNorm where L == TransposedConv2D<Float> {
-    init(_ layer: TransposedConv2D<Float>) {
+    public init(_ layer: TransposedConv2D<Float>) {
         self.init(layer: layer, keyPath: \TransposedConv2D<Float>.filter, outputAxis: 3)
     }
     
-    var filter: Tensor<Float> {
+    public var filter: Tensor<Float> {
         layer.filter
     }
+}
+
+private func l2normalize<Scalar: TensorFlowFloatingPoint>(_ tensor: Tensor<Scalar>) -> Tensor<Scalar> {
+    tensor * rsqrt(tensor.squared().sum() + 1e-8)
 }
