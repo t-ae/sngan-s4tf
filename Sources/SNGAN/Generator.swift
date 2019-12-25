@@ -7,6 +7,7 @@ struct Generator: Layer {
         var upsampleMethod: UpSamplingConv2D.Method
         var enableSpectralNorm: Bool
         var normMethod: XNorm.Method
+        var tanhOutput: Bool
     }
     
     @noDerivative
@@ -17,7 +18,7 @@ struct Generator: Layer {
     var conv2: UpSamplingConv2D
     var conv3: UpSamplingConv2D
     var conv4: UpSamplingConv2D
-    var tail: Conv2D<Float>
+    var tail: SN<Conv2D<Float>>
     
     var bn0: XNorm
     var bn1: XNorm
@@ -38,8 +39,8 @@ struct Generator: Layer {
                                  method: options.upsampleMethod)
         conv4 = UpSamplingConv2D(inputDim: 32, outputDim: 16, kernelSize: 4,
                                  method: options.upsampleMethod)
-        tail = Conv2D<Float>(filterShape: (3, 3, 16, 3), padding: .same,
-                             activation: tanh, filterInitializer: heNormal)
+        tail = SN(Conv2D(filterShape: (3, 3, 16, 3), padding: .same,
+                         filterInitializer: heNormal))
         
         bn0 = XNorm(method: options.normMethod, dim: 128)
         bn1 = XNorm(method: options.normMethod, dim: 128)
@@ -67,6 +68,10 @@ struct Generator: Layer {
         x = lrelu(bn4(conv4(x))) // [-1, 64, 64, 16]
         
         x = tail(x)
+        
+        if options.tanhOutput {
+            x = tanh(x)
+        }
         
         precondition(x.shape == [input.shape[0], 64, 64, 3], "Invalid shape: \(x.shape)")
         

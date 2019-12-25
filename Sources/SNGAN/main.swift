@@ -12,7 +12,8 @@ let generatorOptions = Generator.Options(
     latentSize: latentSize,
     upsampleMethod: .bilinear,
     enableSpectralNorm: true,
-    normMethod: .batchNorm
+    normMethod: .batchNorm,
+    tanhOutput: false
 )
 let discriminatorOptions = Discriminator.Options(
     downsampleMethod: .avgPool,
