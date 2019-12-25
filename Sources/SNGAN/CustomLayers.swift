@@ -1,4 +1,5 @@
 import TensorFlow
+import TensorBoardX
 
 @differentiable
 public func lrelu<Scalar: TensorFlowFloatingPoint>(_ tensor: Tensor<Scalar>) -> Tensor<Scalar> {
@@ -120,5 +121,19 @@ struct XNorm: Layer {
         case .pixelNorm:
             return pixelNorm(input)
         }
+    }
+}
+
+extension SN where L == Conv2D<Float> {
+    func writeHistograms(writer: SummaryWriter, tag: String, globalStep: Int) {
+        writer.addHistogram(tag: "\(tag).filter", values: filter, globalStep: globalStep)
+        writer.addHistogram(tag: "\(tag).bias", values: bias, globalStep: globalStep)
+    }
+}
+
+extension SN where L == TransposedConv2D<Float> {
+    func writeHistograms(writer: SummaryWriter, tag: String, globalStep: Int) {
+        writer.addHistogram(tag: "\(tag).filter", values: filter, globalStep: globalStep)
+        writer.addHistogram(tag: "\(tag).bias", values: bias, globalStep: globalStep)
     }
 }

@@ -55,12 +55,9 @@ struct DBlock: Layer {
     }
     
     func writeHistograms(writer: SummaryWriter, tag: String, globalStep: Int) {
-        writer.addHistogram(tag: "\(tag).conv1.filter", values: conv1.filter, globalStep: globalStep)
-        writer.addHistogram(tag: "\(tag).conv1.bias", values: conv1.bias, globalStep: globalStep)
-        writer.addHistogram(tag: "\(tag).conv2.filter", values: conv2.filter, globalStep: globalStep)
-        writer.addHistogram(tag: "\(tag).conv2.bias", values: conv2.bias, globalStep: globalStep)
-        writer.addHistogram(tag: "\(tag).convSC.filter", values: convSC.filter, globalStep: globalStep)
-        writer.addHistogram(tag: "\(tag).convSC.bias", values: convSC.bias, globalStep: globalStep)
+        conv1.writeHistograms(writer: writer, tag: "\(tag).conv1", globalStep: globalStep)
+        conv2.writeHistograms(writer: writer, tag: "\(tag).conv2", globalStep: globalStep)
+        convSC.writeHistograms(writer: writer, tag: "\(tag).convSC", globalStep: globalStep)
     }
 }
 
@@ -130,11 +127,11 @@ struct Discriminator: Layer {
     }
 
     func writeHistograms(writer: SummaryWriter, globalStep: Int) {
-        writer.addHistogram(tag: "D/head.filter", values: head.filter, globalStep: globalStep)
+        head.writeHistograms(writer: writer, tag: "D/head", globalStep: globalStep)
         block1.writeHistograms(writer: writer, tag: "D/block1", globalStep: globalStep)
         block2.writeHistograms(writer: writer, tag: "D/block2", globalStep: globalStep)
         block3.writeHistograms(writer: writer, tag: "D/block3", globalStep: globalStep)
         block4.writeHistograms(writer: writer, tag: "D/block4", globalStep: globalStep)
-        writer.addHistogram(tag: "D/tail.filter", values: tail.filter, globalStep: globalStep)
+        tail.writeHistograms(writer: writer, tag: "D/tail", globalStep: globalStep)
     }
 }
