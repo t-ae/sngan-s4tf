@@ -2,6 +2,8 @@ import TensorFlow
 
 // https://arxiv.org/abs/1802.05957
 
+// MARK: - Based on PyTorch implementation
+// https://pytorch.org/docs/stable/_modules/torch/nn/utils/spectral_norm.html
 public typealias SN = SpectralNorm
 
 public struct SpectralNorm<L: Layer>: Layer {
@@ -97,4 +99,54 @@ extension SpectralNorm where L == TransposedConv2D<Float> {
 
 private func l2normalize<Scalar: TensorFlowFloatingPoint>(_ tensor: Tensor<Scalar>) -> Tensor<Scalar> {
     tensor * rsqrt(tensor.squared().sum() + 1e-8)
+}
+
+// MARK: - Based on original chainer implementation
+// https://github.com/pfnet-research/sngan_projection/blob/master/source/links/sn_convolution_2d.py
+public struct SNConv2D<Scalar: TensorFlowFloatingPoint>: Layer {
+    public var conv: Conv2D<Scalar>
+    
+    @noDerivative
+    public var enabled: Bool
+    
+    @noDerivative
+    public let numPowerIterations = 1
+    
+    @noDerivative
+    public var v: Parameter<Scalar>
+    
+    public init(_ conv: Conv2D<Scalar>, enabled: Bool) {
+        self.conv = conv
+        self.enabled = enabled
+        v = Parameter(Tensor(randomNormal: [1, conv.filter.shape[3]]))
+    }
+    
+    @differentiable
+    public func wBar() -> Tensor<Scalar> {
+        guard enabled else {
+            return conv.filter
+        }
+        let outputDim = conv.filter.shape[3]
+        let mat = conv.filter.reshaped(to: [-1, outputDim])
+        
+        var u = Tensor<Scalar>(0)
+        for _ in 0..<numPowerIterations {
+            u = l2normalize(matmul(v.value, mat.transposed())) // [1, rows]
+            v.value = l2normalize(matmul(u, mat)) // [1, cols]
+        }
+        
+        let sigma = matmul(matmul(u, mat), v.value.transposed()) // [1, 1]
+        
+        return conv.filter / sigma
+    }
+    
+    @differentiable
+    public func callAsFunction(_ input: Tensor<Scalar>) -> Tensor<Scalar> {
+        conv.activation(conv2D(
+            input,
+            filter: wBar(),
+            strides: (1, conv.strides.0, conv.strides.1, 1),
+            padding: conv.padding,
+            dilations: (1, conv.dilations.0, conv.dilations.1, 1)) + conv.bias)
+    }
 }
