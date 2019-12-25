@@ -92,7 +92,6 @@ for step in 0..<10_000_000 {
     
     // MARK: Train generator
     if step % nDisUpdate == 0 {
-        generator.preTrain()
         let (lossG, 𝛁generator) = valueWithGradient(at: generator) { generator -> Tensor<Float> in
             let noises = sampleNoise(batchSize: batchSize, latentSize: latentSize)
             let fakes = generator(noises)
@@ -107,7 +106,6 @@ for step in 0..<10_000_000 {
     // MARK: Train discrminator
     let noises = sampleNoise(batchSize: batchSize, latentSize: latentSize)
     let fakes = generator(noises)
-    discriminator.preTrain()
     let (lossD, 𝛁discriminator) = valueWithGradient(at: discriminator) { discriminator -> Tensor<Float> in
         let fakeScores = discriminator(fakes)
         

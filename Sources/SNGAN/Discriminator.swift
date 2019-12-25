@@ -9,27 +9,31 @@ struct DBlock: Layer {
     @noDerivative
     let downSampleMethod: DownSampleMethod
     
-    var conv1: SN<Conv2D<Float>>
-    var conv2: SN<Conv2D<Float>>
+    var conv1: SNConv2D<Float>
+    var conv2: SNConv2D<Float>
     
-    var convSC: SN<Conv2D<Float>>
+    var convSC: SNConv2D<Float>
     
     init(
         inputChannels: Int,
         outputChannels: Int,
+        enableSpectralNorm: Bool,
         downSampleMethod: DownSampleMethod
     ) {
         self.downSampleMethod = downSampleMethod
         
         let hiddenChannels = inputChannels
         
-        conv1 = SN(Conv2D(filterShape: (3, 3, inputChannels, hiddenChannels), padding: .same,
-                          filterInitializer: glorotUniform(scale: sqrt(2))))
-        conv2 = SN(Conv2D(filterShape: (3, 3, hiddenChannels, outputChannels), padding: .same,
-                          filterInitializer: glorotUniform(scale: sqrt(2))))
+        conv1 = SNConv2D(Conv2D(filterShape: (3, 3, inputChannels, hiddenChannels), padding: .same,
+                                filterInitializer: glorotUniform(scale: sqrt(2))),
+                         enabled: enableSpectralNorm)
+        conv2 = SNConv2D(Conv2D(filterShape: (3, 3, hiddenChannels, outputChannels), padding: .same,
+                                filterInitializer: glorotUniform(scale: sqrt(2))),
+                         enabled: enableSpectralNorm)
         
-        convSC = SN(Conv2D(filterShape: (1, 1, inputChannels, outputChannels), padding: .same,
-                           filterInitializer: glorotUniform()))
+        convSC = SNConv2D(Conv2D(filterShape: (1, 1, inputChannels, outputChannels), padding: .same,
+                                 filterInitializer: glorotUniform()),
+                          enabled: enableSpectralNorm)
     }
     
     @differentiable
@@ -72,38 +76,38 @@ struct Discriminator: Layer {
     @noDerivative
     var options: Options
     
-    var head: SN<Conv2D<Float>>
+    var head: SNConv2D<Float>
     var block1: DBlock
     var block2: DBlock
     var block3: DBlock
     var block4: DBlock
-    var tail: SN<Conv2D<Float>>
+    var tail: SNConv2D<Float>
     
     var stdConcat: MinibatchStdConcat<Float>
     
     init(options: Options) {
         self.options = options
         
-        head = SN(Conv2D(filterShape: (1, 1, 3, 16), filterInitializer: glorotUniform()))
+        head = SNConv2D(Conv2D(filterShape: (1, 1, 3, 16), filterInitializer: glorotUniform()),
+                        enabled: options.enableSpectralNorm)
         
         block1 = DBlock(inputChannels: 16, outputChannels: 32,
+                        enableSpectralNorm: options.enableSpectralNorm,
                         downSampleMethod: options.downSampleMethod)
         block2 = DBlock(inputChannels: 32, outputChannels: 64,
+                        enableSpectralNorm: options.enableSpectralNorm,
                         downSampleMethod: options.downSampleMethod)
         block3 = DBlock(inputChannels: 64, outputChannels: 128,
+                        enableSpectralNorm: options.enableSpectralNorm,
                         downSampleMethod: options.downSampleMethod)
         block4 = DBlock(inputChannels: 128, outputChannels: 128,
+                        enableSpectralNorm: options.enableSpectralNorm,
                         downSampleMethod: options.downSampleMethod)
         
         let stdDim = options.enableMinibatchStdConcat ? 1 : 0
         stdConcat = MinibatchStdConcat(groupSize: 4)
-        tail = SN(Conv2D(filterShape: (4, 4, 128 + stdDim, 1), filterInitializer: glorotUniform()))
-    }
-    
-    mutating func preTrain() {
-        if(options.enableSpectralNorm) {
-            spectralNormalize(&self)
-        }
+        tail = SNConv2D(Conv2D(filterShape: (4, 4, 128 + stdDim, 1), filterInitializer: glorotUniform()),
+                        enabled: options.enableSpectralNorm)
     }
     
     @differentiable

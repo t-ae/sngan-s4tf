@@ -103,6 +103,51 @@ private func l2normalize<Scalar: TensorFlowFloatingPoint>(_ tensor: Tensor<Scala
 
 // MARK: - Based on original chainer implementation
 // https://github.com/pfnet-research/sngan_projection/blob/master/source/links/sn_convolution_2d.py
+public struct SNDense<Scalar: TensorFlowFloatingPoint>: Layer {
+    public var dense: Dense<Scalar>
+    
+    @noDerivative
+    public var enabled: Bool
+    
+    @noDerivative
+    public let numPowerIterations = 1
+    
+    @noDerivative
+    public let v: Parameter<Scalar>
+    
+    public init(_ dense: Dense<Scalar>, enabled: Bool) {
+        self.dense = dense
+        precondition(dense.weight.rank == 2, "batched dense is not supported.")
+        
+        self.enabled = enabled
+        v = Parameter(Tensor(randomNormal: [1, dense.weight.shape[1]]))
+    }
+    
+    @differentiable
+    public func wBar() -> Tensor<Scalar> {
+        guard enabled else {
+            return dense.weight
+        }
+        let outputDim = dense.weight.shape[1]
+        let mat = dense.weight.reshaped(to: [-1, outputDim])
+        
+        var u = Tensor<Scalar>(0)
+        for _ in 0..<numPowerIterations {
+            u = l2normalize(matmul(v.value, mat.transposed())) // [1, rows]
+            v.value = l2normalize(matmul(u, mat)) // [1, cols]
+        }
+        
+        let sigma = matmul(matmul(u, mat), v.value.transposed()) // [1, 1]
+        
+        return dense.weight / sigma
+    }
+    
+    @differentiable
+    public func callAsFunction(_ input: Tensor<Scalar>) -> Tensor<Scalar> {
+        dense.activation(matmul(input, wBar()) + dense.bias)
+    }
+}
+
 public struct SNConv2D<Scalar: TensorFlowFloatingPoint>: Layer {
     public var conv: Conv2D<Scalar>
     
@@ -113,7 +158,7 @@ public struct SNConv2D<Scalar: TensorFlowFloatingPoint>: Layer {
     public let numPowerIterations = 1
     
     @noDerivative
-    public var v: Parameter<Scalar>
+    public let v: Parameter<Scalar>
     
     public init(_ conv: Conv2D<Scalar>, enabled: Bool) {
         self.conv = conv

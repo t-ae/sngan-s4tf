@@ -9,10 +9,10 @@ struct GBlock: Layer {
     @noDerivative
     let upsampleMethod: UpSampleMethod
     
-    var conv1: SN<Conv2D<Float>>
-    var conv2: SN<Conv2D<Float>>
+    var conv1: SNConv2D<Float>
+    var conv2: SNConv2D<Float>
     
-    var convSC: SN<Conv2D<Float>>
+    var convSC: SNConv2D<Float>
     
     var norm1: XNorm
     var norm2: XNorm
@@ -20,6 +20,7 @@ struct GBlock: Layer {
     init(
         inputChannels: Int,
         outputChannels: Int,
+        enableSpectralNorm: Bool,
         upsampleMethod: UpSampleMethod,
         normalizationMethod: XNorm.Method
     ) {
@@ -27,16 +28,19 @@ struct GBlock: Layer {
         
         let hiddenChannels = inputChannels
         
-        conv1 = SN(Conv2D(filterShape: (3, 3, inputChannels, hiddenChannels), padding: .same,
-                          filterInitializer: glorotUniform(scale: sqrt(2))))
-        conv2 = SN(Conv2D(filterShape: (3, 3, hiddenChannels, outputChannels), padding: .same,
-                          filterInitializer: glorotUniform(scale: sqrt(2))))
+        conv1 = SNConv2D(Conv2D(filterShape: (3, 3, inputChannels, hiddenChannels), padding: .same,
+                                filterInitializer: glorotUniform(scale: sqrt(2))),
+                         enabled: enableSpectralNorm)
+        conv2 = SNConv2D(Conv2D(filterShape: (3, 3, hiddenChannels, outputChannels), padding: .same,
+                                filterInitializer: glorotUniform(scale: sqrt(2))),
+                         enabled: enableSpectralNorm)
         
         norm1 = XNorm(method: normalizationMethod, dim: inputChannels)
         norm2 = XNorm(method: normalizationMethod, dim: hiddenChannels)
         
-        convSC = SN(Conv2D(filterShape: (1, 1, inputChannels, outputChannels), padding: .same,
-                           filterInitializer: glorotUniform(scale: 1)))
+        convSC = SNConv2D(Conv2D(filterShape: (1, 1, inputChannels, outputChannels), padding: .same,
+                                 filterInitializer: glorotUniform()),
+                          enabled: enableSpectralNorm)
     }
     
     @differentiable
@@ -83,50 +87,49 @@ struct Generator: Layer {
     @noDerivative
     var options: Options
     
-    var head: SN<TransposedConv2D<Float>>
+    var head: SNDense<Float>
     var block1: GBlock
     var block2: GBlock
     var block3: GBlock
     var block4: GBlock
-    var tail: SN<Conv2D<Float>>
+    var tail: SNConv2D<Float>
     
     var bn: XNorm
     
     init(options: Options) {
         self.options = options
         
-        head = SN(TransposedConv2D(filterShape: (4, 4, 128, options.latentSize),
-                                   filterInitializer: glorotUniform(scale: 1)))
+        head = SNDense(Dense(inputSize: options.latentSize, outputSize: 4*4*128,
+                             weightInitializer: glorotUniform()),
+                       enabled: options.enableSpectralNorm)
         block1 = GBlock(inputChannels: 128, outputChannels: 128,
+                        enableSpectralNorm: options.enableSpectralNorm,
                         upsampleMethod: options.upsampleMethod,
                         normalizationMethod: options.normalizationMethod)
         block2 = GBlock(inputChannels: 128, outputChannels: 64,
+                        enableSpectralNorm: options.enableSpectralNorm,
                         upsampleMethod: options.upsampleMethod,
                         normalizationMethod: options.normalizationMethod)
         block3 = GBlock(inputChannels: 64, outputChannels: 32,
+                        enableSpectralNorm: options.enableSpectralNorm,
                         upsampleMethod: options.upsampleMethod,
                         normalizationMethod: options.normalizationMethod)
         block4 = GBlock(inputChannels: 32, outputChannels: 16,
+                        enableSpectralNorm: options.enableSpectralNorm,
                         upsampleMethod: options.upsampleMethod,
                         normalizationMethod: options.normalizationMethod)
-        tail = SN(Conv2D(filterShape: (3, 3, 16, 3), padding: .same,
-                         filterInitializer: glorotUniform(scale: 1)))
+        tail = SNConv2D(Conv2D(filterShape: (3, 3, 16, 3), padding: .same,
+                               filterInitializer: glorotUniform()),
+                        enabled: options.enableSpectralNorm)
         bn = XNorm(method: options.normalizationMethod, dim: 16)
-    }
-    
-    mutating func preTrain() {
-        if(options.enableSpectralNorm) {
-            spectralNormalize(&self)
-        }
     }
     
     @differentiable
     func callAsFunction(_ input: Tensor<Float>) -> Tensor<Float> {
         var x = input
         
-        x = x.expandingShape(at: 1, 2) // [-1, 1, 1, latentSize]
-        
-        x = head(x) // [-1, 4, 4, 128]
+        x = head(x) // [-1, 4*4*128]
+        x = x.reshaped(to: [-1, 4 ,4, 128])
         x = block1(x) // [-1, 8, 8, 128]
         x = block2(x) // [-1, 16, 16, 64]
         x = block3(x) // [-1, 32, 32, 32]
