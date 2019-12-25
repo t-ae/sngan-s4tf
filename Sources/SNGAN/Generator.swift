@@ -14,13 +14,14 @@ struct GBlock: Layer {
     
     var convSC: SN<Conv2D<Float>>
     
-    var bn1: BatchNorm<Float>
-    var bn2: BatchNorm<Float>
+    var norm1: XNorm
+    var norm2: XNorm
     
     init(
         inputChannels: Int,
         outputChannels: Int,
-        upsampleMethod: UpSampleMethod
+        upsampleMethod: UpSampleMethod,
+        normalizationMethod: XNorm.Method
     ) {
         self.upsampleMethod = upsampleMethod
         
@@ -31,8 +32,8 @@ struct GBlock: Layer {
         conv2 = SN(Conv2D(filterShape: (3, 3, hiddenChannels, outputChannels), padding: .same,
                           filterInitializer: glorotUniform(scale: sqrt(2))))
         
-        bn1 = BatchNorm(featureCount: inputChannels)
-        bn2 = BatchNorm(featureCount: hiddenChannels)
+        norm1 = XNorm(method: normalizationMethod, dim: inputChannels)
+        norm2 = XNorm(method: normalizationMethod, dim: hiddenChannels)
         
         convSC = SN(Conv2D(filterShape: (1, 1, inputChannels, outputChannels), padding: .same,
                            filterInitializer: glorotUniform(scale: 1)))
@@ -41,9 +42,9 @@ struct GBlock: Layer {
     @differentiable
     func callAsFunction(_ input: Tensor<Float>) -> Tensor<Float> {
         var res = input
-        res = lrelu(bn1(res))
+        res = lrelu(norm1(res))
         res = conv1(upsample(res))
-        res = lrelu(bn2(res))
+        res = lrelu(norm2(res))
         res = conv2(res)
         
         let shortcut = convSC(upsample(input))
@@ -75,6 +76,7 @@ struct Generator: Layer {
         var latentSize: Int
         var upsampleMethod: GBlock.UpSampleMethod
         var enableSpectralNorm: Bool
+        var normalizationMethod: XNorm.Method
         var tanhOutput: Bool
     }
     
@@ -88,7 +90,7 @@ struct Generator: Layer {
     var block4: GBlock
     var tail: SN<Conv2D<Float>>
     
-    var bn: BatchNorm<Float>
+    var bn: XNorm
     
     init(options: Options) {
         self.options = options
@@ -96,16 +98,20 @@ struct Generator: Layer {
         head = SN(TransposedConv2D(filterShape: (4, 4, 128, options.latentSize),
                                    filterInitializer: glorotUniform(scale: 1)))
         block1 = GBlock(inputChannels: 128, outputChannels: 128,
-                        upsampleMethod: options.upsampleMethod)
+                        upsampleMethod: options.upsampleMethod,
+                        normalizationMethod: options.normalizationMethod)
         block2 = GBlock(inputChannels: 128, outputChannels: 64,
-                        upsampleMethod: options.upsampleMethod)
+                        upsampleMethod: options.upsampleMethod,
+                        normalizationMethod: options.normalizationMethod)
         block3 = GBlock(inputChannels: 64, outputChannels: 32,
-                        upsampleMethod: options.upsampleMethod)
+                        upsampleMethod: options.upsampleMethod,
+                        normalizationMethod: options.normalizationMethod)
         block4 = GBlock(inputChannels: 32, outputChannels: 16,
-                        upsampleMethod: options.upsampleMethod)
+                        upsampleMethod: options.upsampleMethod,
+                        normalizationMethod: options.normalizationMethod)
         tail = SN(Conv2D(filterShape: (3, 3, 16, 3), padding: .same,
                          filterInitializer: glorotUniform(scale: 1)))
-        bn = BatchNorm(featureCount: 16)
+        bn = XNorm(method: options.normalizationMethod, dim: 16)
     }
     
     mutating func preTrain() {

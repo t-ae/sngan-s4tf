@@ -1,5 +1,7 @@
 import TensorFlow
 
+// https://arxiv.org/abs/1710.10196
+
 public struct MinibatchStdConcat<Scalar: TensorFlowFloatingPoint>: ParameterlessLayer {
     @noDerivative
     public let groupSize: Int
