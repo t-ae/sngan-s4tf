@@ -21,7 +21,7 @@ struct UpSamplingConv2D: Layer {
         let strides = method == .convStride ? (2, 2) : (1, 1)
         let filterShape = (kernelSize, kernelSize, outputDim*depthFactor, inputDim)
         conv = SN(TransposedConv2D(filterShape: filterShape, strides: strides,
-                                   padding: .same, filterInitializer: heNormal))
+                                   padding: .same, filterInitializer: heNormal()))
     }
     
     var upsampling = UpSampling2D<Float>(size: 2)
@@ -63,7 +63,7 @@ struct DownSamplingConv2D: Layer {
         self.method = method
         let strides = method == .convStride ? (2, 2) : (1, 1)
         conv = SN(Conv2D(filterShape: (kernelSize, kernelSize, inputDIm, outputDim), strides: strides,
-                         padding: .same, filterInitializer: heNormal))
+                         padding: .same, filterInitializer: heNormal()))
     }
     
     var avgPool = AvgPool2D<Float>(poolSize: (2, 2), strides: (2, 2))

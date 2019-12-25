@@ -1,8 +1,19 @@
 import TensorFlow
 
-public func heNormal<Scalar: TensorFlowFloatingPoint>(shape: TensorShape) -> Tensor<Scalar> {
-    let out = shape.dimensions.dropLast().reduce(1, *)
-    return Tensor<Scalar>(randomNormal: shape) * sqrt(2 / Scalar(out))
+public func heNormal<Scalar: TensorFlowFloatingPoint>() -> ParameterInitializer<Scalar> {
+    return { shape in
+        let out = shape.dimensions.dropLast().reduce(1, *)
+        return Tensor(randomNormal: shape) * sqrt(2 / Scalar(out))
+    }
+}
+
+public func glorotUniform<Scalar: TensorFlowFloatingPoint>(
+    scale: Scalar,
+    seed: TensorFlowSeed = Context.local.randomSeed
+) -> ParameterInitializer<Scalar> {
+    return { shape in
+        Tensor(glorotUniform: shape, seed: seed) * scale
+    }
 }
 
 @differentiable(wrt: tensor)

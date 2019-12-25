@@ -64,6 +64,9 @@ extension SpectralNorm where L == Dense<Float> {
     public var weight: Tensor<Float> {
         layer.weight
     }
+    public var bias: Tensor<Float> {
+        layer.bias
+    }
 }
 
 extension SpectralNorm where L == Conv2D<Float> {
@@ -74,6 +77,9 @@ extension SpectralNorm where L == Conv2D<Float> {
     public var filter: Tensor<Float> {
         layer.filter
     }
+    public var bias: Tensor<Float> {
+        layer.bias
+    }
 }
 
 extension SpectralNorm where L == TransposedConv2D<Float> {
@@ -83,6 +89,9 @@ extension SpectralNorm where L == TransposedConv2D<Float> {
     
     public var filter: Tensor<Float> {
         layer.filter
+    }
+    public var bias: Tensor<Float> {
+        layer.bias
     }
 }
 
