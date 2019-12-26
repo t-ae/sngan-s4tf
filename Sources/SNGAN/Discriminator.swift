@@ -58,12 +58,6 @@ struct DBlock: Layer {
             return avgPool(x)
         }
     }
-    
-    func writeHistograms(writer: SummaryWriter, tag: String, globalStep: Int) {
-        conv1.writeHistograms(writer: writer, tag: "\(tag).conv1", globalStep: globalStep)
-        conv2.writeHistograms(writer: writer, tag: "\(tag).conv2", globalStep: globalStep)
-        convSC.writeHistograms(writer: writer, tag: "\(tag).convSC", globalStep: globalStep)
-    }
 }
 
 struct Discriminator: Layer {
@@ -133,11 +127,11 @@ struct Discriminator: Layer {
     }
 
     func writeHistograms(writer: SummaryWriter, globalStep: Int) {
-        head.writeHistograms(writer: writer, tag: "D/head", globalStep: globalStep)
-        block1.writeHistograms(writer: writer, tag: "D/block1", globalStep: globalStep)
-        block2.writeHistograms(writer: writer, tag: "D/block2", globalStep: globalStep)
-        block3.writeHistograms(writer: writer, tag: "D/block3", globalStep: globalStep)
-        block4.writeHistograms(writer: writer, tag: "D/block4", globalStep: globalStep)
-        tail.writeHistograms(writer: writer, tag: "D/tail", globalStep: globalStep)
+        writer.addHistograms(tag: "D/head", layer: head, globalStep: globalStep)
+        writer.addHistograms(tag: "D/block1", layer: block1, globalStep: globalStep)
+        writer.addHistograms(tag: "D/block2", layer: block2, globalStep: globalStep)
+        writer.addHistograms(tag: "D/block3", layer: block3, globalStep: globalStep)
+        writer.addHistograms(tag: "D/block4", layer: block4, globalStep: globalStep)
+        writer.addHistograms(tag: "D/tail", layer: tail, globalStep: globalStep)
     }
 }

@@ -2,51 +2,38 @@ import TensorFlow
 import CustomLayers
 import TensorBoardX
 
-extension Dense where Scalar == Float {
-    func writeHistograms(writer: SummaryWriter, tag: String, globalStep: Int) {
-        writer.addHistogram(tag: "\(tag).weight", values: weight, globalStep: globalStep)
-        writer.addHistogram(tag: "\(tag).bias", values: bias, globalStep: globalStep)
+extension SN: HistogramWritable where L: HistogramWritable {
+    public func writeHistograms(tag: String, writer: SummaryWriter, globalStep: Int?) {
+        layer.writeHistograms(tag: tag, writer: writer, globalStep: globalStep)
     }
 }
 
-extension Conv2D where Scalar == Float {
-    func writeHistograms(writer: SummaryWriter, tag: String, globalStep: Int) {
-        writer.addHistogram(tag: "\(tag).filter", values: filter, globalStep: globalStep)
-        writer.addHistogram(tag: "\(tag).bias", values: bias, globalStep: globalStep)
-    }
-}
-
-extension TransposedConv2D where Scalar == Float {
-    func writeHistograms(writer: SummaryWriter, tag: String, globalStep: Int) {
-        writer.addHistogram(tag: "\(tag).filter", values: filter, globalStep: globalStep)
-        writer.addHistogram(tag: "\(tag).bias", values: bias, globalStep: globalStep)
-    }
-}
-
-extension SN where L == Conv2D<Float> {
-    func writeHistograms(writer: SummaryWriter, tag: String, globalStep: Int) {
-        writer.addHistogram(tag: "\(tag).filter", values: filter, globalStep: globalStep)
-        writer.addHistogram(tag: "\(tag).bias", values: bias, globalStep: globalStep)
-    }
-}
-
-extension SN where L == TransposedConv2D<Float> {
-    func writeHistograms(writer: SummaryWriter, tag: String, globalStep: Int) {
-        writer.addHistogram(tag: "\(tag).filter", values: filter, globalStep: globalStep)
-        writer.addHistogram(tag: "\(tag).bias", values: bias, globalStep: globalStep)
-    }
-}
-
-extension SNDense where Scalar == Float {
-    func writeHistograms(writer: SummaryWriter, tag: String, globalStep: Int) {
+extension SNDense: HistogramWritable where Scalar == Float {
+    public func writeHistograms(tag: String, writer: SummaryWriter, globalStep: Int?) {
         writer.addHistogram(tag: "\(tag).weight", values: dense.weight, globalStep: globalStep)
         writer.addHistogram(tag: "\(tag).bias", values: dense.bias, globalStep: globalStep)
     }
 }
 
-extension SNConv2D where Scalar == Float {
-    func writeHistograms(writer: SummaryWriter, tag: String, globalStep: Int) {
+extension SNConv2D: HistogramWritable where Scalar == Float {
+    public func writeHistograms(tag: String, writer: SummaryWriter, globalStep: Int?) {
         writer.addHistogram(tag: "\(tag).filter", values: conv.filter, globalStep: globalStep)
         writer.addHistogram(tag: "\(tag).bias", values: conv.bias, globalStep: globalStep)
+    }
+}
+
+extension GBlock: HistogramWritable {
+    func writeHistograms(tag: String, writer: SummaryWriter, globalStep: Int?) {
+        writer.addHistograms(tag: "\(tag).conv1", layer: conv1, globalStep: globalStep)
+        writer.addHistograms(tag: "\(tag).conv2", layer: conv2, globalStep: globalStep)
+        writer.addHistograms(tag: "\(tag).convSC", layer: convSC, globalStep: globalStep)
+    }
+}
+
+extension DBlock: HistogramWritable {
+    func writeHistograms(tag: String, writer: SummaryWriter, globalStep: Int?) {
+        writer.addHistograms(tag: "\(tag).conv1", layer: conv1, globalStep: globalStep)
+        writer.addHistograms(tag: "\(tag).conv2", layer: conv2, globalStep: globalStep)
+        writer.addHistograms(tag: "\(tag).convSC", layer: convSC, globalStep: globalStep)
     }
 }

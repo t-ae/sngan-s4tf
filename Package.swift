@@ -12,7 +12,7 @@ let package = Package(
             targets: ["CustomLayers"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/t-ae/tensorboardx-s4tf.git", from: "0.0.5"),
+        .package(url: "https://github.com/t-ae/tensorboardx-s4tf.git", from: "0.0.6"),
         .package(url: "https://github.com/t-ae/image-loader.git", from: "0.0.6"),
     ],
     targets: [

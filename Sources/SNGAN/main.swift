@@ -139,3 +139,5 @@ for (step, batch) in seq.enumerated() {
         writer.flush()
     }
 }
+
+writer.close()

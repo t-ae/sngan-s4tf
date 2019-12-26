@@ -68,12 +68,6 @@ struct GBlock: Layer {
             return resize2xBilinear(images: x)
         }
     }
-    
-    func writeHistograms(writer: SummaryWriter, tag: String, globalStep: Int) {
-        conv1.writeHistograms(writer: writer, tag: "\(tag).conv1", globalStep: globalStep)
-        conv2.writeHistograms(writer: writer, tag: "\(tag).conv2", globalStep: globalStep)
-        convSC.writeHistograms(writer: writer, tag: "\(tag).convSC", globalStep: globalStep)
-    }
 }
 
 struct Generator: Layer {
@@ -151,11 +145,11 @@ struct Generator: Layer {
     }
     
     func writeHistograms(writer: SummaryWriter, globalStep: Int) {
-        head.writeHistograms(writer: writer, tag: "G/head", globalStep: globalStep)
-        block1.writeHistograms(writer: writer, tag: "G/block1", globalStep: globalStep)
-        block2.writeHistograms(writer: writer, tag: "G/block2", globalStep: globalStep)
-        block3.writeHistograms(writer: writer, tag: "G/block3", globalStep: globalStep)
-        block4.writeHistograms(writer: writer, tag: "G/block4", globalStep: globalStep)
-        tail.writeHistograms(writer: writer, tag: "G/tail", globalStep: globalStep)
+        writer.addHistograms(tag: "G/head", layer: head, globalStep: globalStep)
+        writer.addHistograms(tag: "G/block1", layer: block1, globalStep: globalStep)
+        writer.addHistograms(tag: "G/block2", layer: block2, globalStep: globalStep)
+        writer.addHistograms(tag: "G/block3", layer: block3, globalStep: globalStep)
+        writer.addHistograms(tag: "G/block4", layer: block4, globalStep: globalStep)
+        writer.addHistograms(tag: "G/tail", layer: tail, globalStep: globalStep)
     }
 }
