@@ -23,6 +23,9 @@ let package = Package(
             name: "SNGAN",
             dependencies: ["TensorBoardX", "ImageLoader", "CustomLayers"]),
         .testTarget(
+            name: "CustomLayersTests",
+            dependencies: ["CustomLayers"]),
+        .testTarget(
             name: "SNGANTests",
             dependencies: ["SNGAN"]),
     ]
