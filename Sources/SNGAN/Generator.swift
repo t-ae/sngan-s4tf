@@ -119,10 +119,13 @@ struct Generator: Layer {
                         enableSpectralNorm: options.enableSpectralNorm,
                         upsampleMethod: options.upsampleMethod,
                         normalizationMethod: options.normalizationMethod)
+        
+        // SN disabled
         tail = SNConv2D(Conv2D(filterShape: (3, 3, 16, 3), padding: .same,
                                filterInitializer: glorotUniform()),
-                        enabled: options.enableSpectralNorm)
+                        enabled: false)
         norm = XNorm(method: options.normalizationMethod, dim: 16)
+        
     }
     
     @differentiable
