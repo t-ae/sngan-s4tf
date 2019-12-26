@@ -127,6 +127,13 @@ for (step, batch) in seq.enumerated() {
         let fakeStd = fakes.standardDeviation(alongAxes: 0).mean().scalarized()
         writer.addScalar(tag: "fake_std", scalar: fakeStd, globalStep: step)
         
+        let grad = gradient(at: fakes) { fakes -> Tensor<Float> in
+            let scores = discriminator(fakes)
+            return scores.sum()
+        }
+        let gradnorm = sqrt(grad.squared().sum())
+        writer.addScalar(tag: "gradnorm", scalar: gradnorm.scalarized(), globalStep: step)
+        
         writer.flush()
     }
     
