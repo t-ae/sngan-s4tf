@@ -5,6 +5,12 @@ import PackageDescription
 
 let package = Package(
     name: "SNGAN",
+    products: [
+        // Products define the executables and libraries produced by a package, and make them visible to other packages.
+        .library(
+            name: "CustomLayers",
+            targets: ["CustomLayers"]),
+    ],
     dependencies: [
         .package(url: "https://github.com/t-ae/tensorboardx-s4tf.git", from: "0.0.5"),
         .package(url: "https://github.com/t-ae/image-loader.git", from: "0.0.6"),
@@ -12,9 +18,10 @@ let package = Package(
     targets: [
         // Targets are the basic building blocks of a package. A target can define a module or a test suite.
         // Targets can depend on other targets in this package, and on products in packages which this package depends on.
+        .target(name: "CustomLayers"),
         .target(
             name: "SNGAN",
-            dependencies: ["TensorBoardX", "ImageLoader"]),
+            dependencies: ["TensorBoardX", "ImageLoader", "CustomLayers"]),
         .testTarget(
             name: "SNGANTests",
             dependencies: ["SNGAN"]),

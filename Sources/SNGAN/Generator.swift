@@ -1,5 +1,6 @@
 import TensorFlow
 import TensorBoardX
+import CustomLayers
 
 struct GBlock: Layer {
     enum UpSampleMethod: String, Codable {

@@ -41,6 +41,8 @@ public struct ConditionalBatchNorm<Scalar: TensorFlowFloatingPoint>: Layer {
 
 // https://arxiv.org/abs/1607.08022
 public struct InstanceNorm2D<Scalar: TensorFlowFloatingPoint>: ParameterlessLayer {
+    public init() {}
+    
     @differentiable
     public func callAsFunction(_ input: Tensor<Scalar>) -> Tensor<Scalar> {
         precondition(input.rank == 4)
@@ -53,6 +55,8 @@ public struct InstanceNorm2D<Scalar: TensorFlowFloatingPoint>: ParameterlessLaye
 
 // https://arxiv.org/abs/1710.10196
 public struct PixelNorm2D<Scalar: TensorFlowFloatingPoint>: ParameterlessLayer {
+    public init() {}
+    
     @differentiable
     public func callAsFunction(_ input: Tensor<Scalar>) -> Tensor<Scalar> {
         precondition(input.rank == 4)

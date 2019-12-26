@@ -1,5 +1,6 @@
 import TensorFlow
 import TensorBoardX
+import CustomLayers
 
 @differentiable
 public func lrelu<Scalar: TensorFlowFloatingPoint>(_ tensor: Tensor<Scalar>) -> Tensor<Scalar> {
