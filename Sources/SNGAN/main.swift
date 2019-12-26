@@ -104,7 +104,7 @@ for (step, batch) in seq.enumerated() {
             return loss
         }
         optG.update(&generator, along: 𝛁generator)
-        writer.addScalar(tag: "lossG", scalar: lossG.scalarized(), globalStep: step)
+        writer.addScalar(tag: "Loss/G", scalar: lossG.scalarized(), globalStep: step)
     }
     
     // MARK: Train discrminator
@@ -118,7 +118,7 @@ for (step, batch) in seq.enumerated() {
         return loss
     }
     optD.update(&discriminator, along: 𝛁discriminator)
-    writer.addScalar(tag: "lossD", scalar: lossD.scalarized(), globalStep: step)
+    writer.addScalar(tag: "Loss/D", scalar: lossD.scalarized(), globalStep: step)
     
     if step % 500 == 0 {
         plotImages(tag: "reals", images: reals, globalStep: step)
@@ -128,14 +128,14 @@ for (step, batch) in seq.enumerated() {
         discriminator.writeHistograms(writer: writer, globalStep: step)
         
         let fakeStd = fakes.standardDeviation(alongAxes: 0).mean().scalarized()
-        writer.addScalar(tag: "fake_std", scalar: fakeStd, globalStep: step)
+        writer.addScalar(tag: "Value/fake_std", scalar: fakeStd, globalStep: step)
         
         let grad = gradient(at: fakes) { fakes -> Tensor<Float> in
             let scores = discriminator(fakes)
             return scores.sum()
         }
         let gradnorm = sqrt(grad.squared().sum(squeezingAxes: [1, 2, 3])).mean()
-        writer.addScalar(tag: "gradnorm", scalar: gradnorm.scalarized(), globalStep: step)
+        writer.addScalar(tag: "Value/gradnorm", scalar: gradnorm.scalarized(), globalStep: step)
         
         writer.flush()
     }
