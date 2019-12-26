@@ -131,7 +131,7 @@ for (step, batch) in seq.enumerated() {
             let scores = discriminator(fakes)
             return scores.sum()
         }
-        let gradnorm = sqrt(grad.squared().sum())
+        let gradnorm = sqrt(grad.squared().sum(squeezingAxes: [1, 2, 3])).mean()
         writer.addScalar(tag: "gradnorm", scalar: gradnorm.scalarized(), globalStep: step)
         
         writer.flush()
