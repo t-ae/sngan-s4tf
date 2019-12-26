@@ -8,6 +8,8 @@ struct GBlock: Layer {
     }
     
     @noDerivative
+    let residual: Bool
+    @noDerivative
     let upsampleMethod: UpSampleMethod
     
     var conv1: SNConv2D<Float>
@@ -21,10 +23,12 @@ struct GBlock: Layer {
     init(
         inputChannels: Int,
         outputChannels: Int,
+        residual: Bool,
         enableSpectralNorm: Bool,
         upsampleMethod: UpSampleMethod,
         normalizationMethod: XNorm.Method
     ) {
+        self.residual = residual
         self.upsampleMethod = upsampleMethod
         
         let hiddenChannels = inputChannels
@@ -52,9 +56,12 @@ struct GBlock: Layer {
         res = lrelu(norm2(res))
         res = conv2(res)
         
-        let shortcut = convSC(upsample(input))
-        
-        return res + shortcut
+        if residual {
+            let shortcut = convSC(upsample(input))
+            return res + shortcut
+        } else {
+            return res
+        }
     }
     
     var upsampling = UpSampling2D<Float>(size: 2)
@@ -73,6 +80,7 @@ struct GBlock: Layer {
 struct Generator: Layer {
     struct Options: Codable {
         var latentSize: Int
+        var residual: Bool
         var upSampleMethod: GBlock.UpSampleMethod
         var enableSpectralNorm: Bool
         var normalizationMethod: XNorm.Method
@@ -98,18 +106,22 @@ struct Generator: Layer {
                              weightInitializer: glorotUniform()),
                        enabled: options.enableSpectralNorm)
         block1 = GBlock(inputChannels: 128, outputChannels: 128,
+                        residual: options.residual,
                         enableSpectralNorm: options.enableSpectralNorm,
                         upsampleMethod: options.upSampleMethod,
                         normalizationMethod: options.normalizationMethod)
         block2 = GBlock(inputChannels: 128, outputChannels: 64,
+                        residual: options.residual,
                         enableSpectralNorm: options.enableSpectralNorm,
                         upsampleMethod: options.upSampleMethod,
                         normalizationMethod: options.normalizationMethod)
         block3 = GBlock(inputChannels: 64, outputChannels: 32,
+                        residual: options.residual,
                         enableSpectralNorm: options.enableSpectralNorm,
                         upsampleMethod: options.upSampleMethod,
                         normalizationMethod: options.normalizationMethod)
         block4 = GBlock(inputChannels: 32, outputChannels: 16,
+                        residual: options.residual,
                         enableSpectralNorm: options.enableSpectralNorm,
                         upsampleMethod: options.upSampleMethod,
                         normalizationMethod: options.normalizationMethod)

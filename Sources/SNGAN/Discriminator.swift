@@ -8,6 +8,8 @@ struct DBlock: Layer {
     }
     
     @noDerivative
+    let residual: Bool
+    @noDerivative
     let downSampleMethod: DownSampleMethod
     
     var conv1: SNConv2D<Float>
@@ -18,9 +20,11 @@ struct DBlock: Layer {
     init(
         inputChannels: Int,
         outputChannels: Int,
+        residual: Bool,
         enableSpectralNorm: Bool,
         downSampleMethod: DownSampleMethod
     ) {
+        self.residual = residual
         self.downSampleMethod = downSampleMethod
         
         let hiddenChannels = inputChannels
@@ -44,9 +48,12 @@ struct DBlock: Layer {
         res = conv2(lrelu(res))
         res = downsample(res)
         
-        let shortcut = convSC(downsample(input))
-        
-        return res + shortcut
+        if residual {
+            let shortcut = convSC(downsample(input))
+            return res + shortcut
+        } else {
+            return res
+        }
     }
     
     var avgPool = AvgPool2D<Float>(poolSize: (2, 2), strides: (2, 2))
@@ -62,6 +69,7 @@ struct DBlock: Layer {
 
 struct Discriminator: Layer {
     struct Options: Codable {
+        var residual: Bool
         var enableSpectralNorm: Bool
         var downSampleMethod: DBlock.DownSampleMethod
         var enableMinibatchStdConcat: Bool
@@ -86,15 +94,19 @@ struct Discriminator: Layer {
                         enabled: options.enableSpectralNorm)
         
         block1 = DBlock(inputChannels: 16, outputChannels: 32,
+                        residual: options.residual,
                         enableSpectralNorm: options.enableSpectralNorm,
                         downSampleMethod: options.downSampleMethod)
         block2 = DBlock(inputChannels: 32, outputChannels: 64,
+                        residual: options.residual,
                         enableSpectralNorm: options.enableSpectralNorm,
                         downSampleMethod: options.downSampleMethod)
         block3 = DBlock(inputChannels: 64, outputChannels: 128,
+                        residual: options.residual,
                         enableSpectralNorm: options.enableSpectralNorm,
                         downSampleMethod: options.downSampleMethod)
         block4 = DBlock(inputChannels: 128, outputChannels: 128,
+                        residual: options.residual,
                         enableSpectralNorm: options.enableSpectralNorm,
                         downSampleMethod: options.downSampleMethod)
         
@@ -108,7 +120,7 @@ struct Discriminator: Layer {
     func callAsFunction(_ input: Tensor<Float>) -> Tensor<Float> {
         var x = input
         
-        x = lrelu(head(x)) // [-1, 64, 64, 16]
+        x = head(x) // [-1, 64, 64, 16]
         x = block1(x) // [-1, 32, 32, 32]
         x = block2(x) // [-1, 16, 16, 64]
         x = block3(x) // [-1, 8, 8, 128]

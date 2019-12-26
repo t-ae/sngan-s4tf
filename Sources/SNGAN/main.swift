@@ -13,12 +13,14 @@ let nDisUpdate = 5 // D/G training ratio
 
 let generatorOptions = Generator.Options(
     latentSize: latentSize,
+    residual: true,
     upSampleMethod: .bilinear,
     enableSpectralNorm: true,
     normalizationMethod: .batchNorm,
     tanhOutput: false
 )
 let discriminatorOptions = Discriminator.Options(
+    residual: true,
     enableSpectralNorm: true,
     downSampleMethod: .avgPool,
     enableMinibatchStdConcat: true
