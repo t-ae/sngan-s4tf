@@ -55,6 +55,8 @@ let loader = try ImageLoader(
 )
 print("Total images: \(loader.entries.count)")
 
+let seq = BatchImageSequence(loader: loader, batchSize: batchSize, infinite: true)
+
 let plotGridCols = 8
 let testNoise = sampleNoise(batchSize: plotGridCols*plotGridCols, latentSize: latentSize)
 
@@ -80,14 +82,14 @@ writer.addText(tag: "\(logName)/discriminatorOptions", text: discriminatorOption
 writer.addText(tag: "\(logName)/nDisUpdate", text: String(nDisUpdate))
 
 // MARK: - Training loop
-for step in 0..<10_000_000 {
+for (step, batch) in seq.enumerated() {
     if step % 10 == 0 {
         print("step: \(step)")
     }
     
     Context.local.learningPhase = .training
     
-    var (reals, _) = loader.nextBatch(size: batchSize)
+    var reals = batch.images
     reals = reals * 2 - 1
     
     // MARK: Train generator
