@@ -95,7 +95,7 @@ struct Generator: Layer {
     var block4: GBlock
     var tail: SNConv2D<Float>
     
-    var bn: XNorm
+    var norm: XNorm
     
     init(options: Options) {
         self.options = options
@@ -122,7 +122,7 @@ struct Generator: Layer {
         tail = SNConv2D(Conv2D(filterShape: (3, 3, 16, 3), padding: .same,
                                filterInitializer: glorotUniform()),
                         enabled: options.enableSpectralNorm)
-        bn = XNorm(method: options.normalizationMethod, dim: 16)
+        norm = XNorm(method: options.normalizationMethod, dim: 16)
     }
     
     @differentiable
@@ -135,7 +135,7 @@ struct Generator: Layer {
         x = block2(x) // [-1, 16, 16, 64]
         x = block3(x) // [-1, 32, 32, 32]
         x = block4(x) // [-1, 64, 64, 16]
-        x = lrelu(bn(x))
+        x = lrelu(norm(x))
         x = tail(x)
         
         if options.tanhOutput {
