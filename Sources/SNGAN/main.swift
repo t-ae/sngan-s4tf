@@ -31,6 +31,8 @@ let discriminatorOptions = Discriminator.Options(
 //let lossObj = NonSaturatingLoss()
 let lossObj = HingeLoss()
 
+let printTime = false
+
 // MARK: - Model definition
 var generator = Generator(options: generatorOptions)
 var discriminator = Discriminator(options: discriminatorOptions)
@@ -56,6 +58,12 @@ let loader = try ImageLoader(
     rng: rng
 )
 print("Total images: \(loader.entries.count)")
+
+loader.onNextBatchEnd = { sec in
+    if printTime {
+        print("next: \(sec)sec")
+    }
+}
 
 let seq = BatchImageSequence(loader: loader, batchSize: batchSize, infinite: true)
 
@@ -96,6 +104,7 @@ for (step, batch) in seq.enumerated() {
     
     // MARK: Train generator
     if step % nDisUpdate == 0 {
+        let gStart = Date()
         let (lossG, 𝛁generator) = valueWithGradient(at: generator) { generator -> Tensor<Float> in
             let noises = sampleNoise(batchSize: batchSize, latentSize: latentSize)
             let fakes = generator(noises)
@@ -105,9 +114,13 @@ for (step, batch) in seq.enumerated() {
         }
         optG.update(&generator, along: 𝛁generator)
         writer.addScalar(tag: "Loss/G", scalar: lossG.scalarized(), globalStep: step)
+        if printTime {
+            print("G train: \(Date().timeIntervalSince(gStart))sec")
+        }
     }
     
     // MARK: Train discrminator
+    let dStart = Date()
     let noises = sampleNoise(batchSize: batchSize, latentSize: latentSize)
     let fakes = generator(noises)
     let (lossD, 𝛁discriminator) = valueWithGradient(at: discriminator) { discriminator -> Tensor<Float> in
@@ -119,6 +132,9 @@ for (step, batch) in seq.enumerated() {
     }
     optD.update(&discriminator, along: 𝛁discriminator)
     writer.addScalar(tag: "Loss/D", scalar: lossD.scalarized(), globalStep: step)
+    if printTime {
+        print("D train: \(Date().timeIntervalSince(dStart))sec")
+    }
     
     if step % 500 == 0 {
         plotImages(tag: "reals", images: reals, globalStep: step)
