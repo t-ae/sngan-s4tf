@@ -23,6 +23,7 @@ let discriminatorOptions = Discriminator.Options(
     residual: true,
     enableSpectralNorm: true,
     downSampleMethod: .avgPool,
+    normalizationMethod: .none,
     enableMinibatchStdConcat: true
 )
 
