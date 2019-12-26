@@ -62,7 +62,6 @@ struct DBlock: Layer {
 
 struct Discriminator: Layer {
     struct Options: Codable {
-        var downsampleMethod: DownSamplingConv2D.Method
         var enableSpectralNorm: Bool
         var downSampleMethod: DBlock.DownSampleMethod
         var enableMinibatchStdConcat: Bool

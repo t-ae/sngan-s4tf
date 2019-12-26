@@ -13,13 +13,12 @@ let nDisUpdate = 5 // D/G training ratio
 
 let generatorOptions = Generator.Options(
     latentSize: latentSize,
-    upsampleMethod: .bilinear,
+    upSampleMethod: .bilinear,
     enableSpectralNorm: true,
     normalizationMethod: .batchNorm,
     tanhOutput: false
 )
 let discriminatorOptions = Discriminator.Options(
-    downsampleMethod: .avgPool,
     enableSpectralNorm: true,
     downSampleMethod: .avgPool,
     enableMinibatchStdConcat: true
@@ -61,7 +60,7 @@ let plotGridCols = 8
 let testNoise = sampleNoise(batchSize: plotGridCols*plotGridCols, latentSize: latentSize)
 
 // MARK: - Plot
-let logName = "\(lossObj.name)_\(generatorOptions.upsampleMethod.rawValue)_\(discriminatorOptions.downsampleMethod.rawValue)"
+let logName = "\(lossObj.name)_\(generatorOptions.upSampleMethod.rawValue)_\(discriminatorOptions.downSampleMethod.rawValue)"
 let writer = SummaryWriter(logdir: URL(fileURLWithPath: "./output/\(logName)"))
 func plotImages(tag: String, images: Tensor<Float>, globalStep: Int) {
     let height = images.shape[1]

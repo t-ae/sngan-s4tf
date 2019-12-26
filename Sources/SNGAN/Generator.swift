@@ -73,7 +73,7 @@ struct GBlock: Layer {
 struct Generator: Layer {
     struct Options: Codable {
         var latentSize: Int
-        var upsampleMethod: GBlock.UpSampleMethod
+        var upSampleMethod: GBlock.UpSampleMethod
         var enableSpectralNorm: Bool
         var normalizationMethod: XNorm.Method
         var tanhOutput: Bool
@@ -99,19 +99,19 @@ struct Generator: Layer {
                        enabled: options.enableSpectralNorm)
         block1 = GBlock(inputChannels: 128, outputChannels: 128,
                         enableSpectralNorm: options.enableSpectralNorm,
-                        upsampleMethod: options.upsampleMethod,
+                        upsampleMethod: options.upSampleMethod,
                         normalizationMethod: options.normalizationMethod)
         block2 = GBlock(inputChannels: 128, outputChannels: 64,
                         enableSpectralNorm: options.enableSpectralNorm,
-                        upsampleMethod: options.upsampleMethod,
+                        upsampleMethod: options.upSampleMethod,
                         normalizationMethod: options.normalizationMethod)
         block3 = GBlock(inputChannels: 64, outputChannels: 32,
                         enableSpectralNorm: options.enableSpectralNorm,
-                        upsampleMethod: options.upsampleMethod,
+                        upsampleMethod: options.upSampleMethod,
                         normalizationMethod: options.normalizationMethod)
         block4 = GBlock(inputChannels: 32, outputChannels: 16,
                         enableSpectralNorm: options.enableSpectralNorm,
-                        upsampleMethod: options.upsampleMethod,
+                        upsampleMethod: options.upSampleMethod,
                         normalizationMethod: options.normalizationMethod)
         
         // SN disabled
