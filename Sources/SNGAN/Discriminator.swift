@@ -8,59 +8,36 @@ struct DBlock: Layer {
     }
     
     @noDerivative
-    let residual: Bool
-    @noDerivative
     let downSampleMethod: DownSampleMethod
     
-    var conv1: SNConv2D<Float>
-    var conv2: SNConv2D<Float>
-    
-    var convSC: SNConv2D<Float>
-    
-    var norm1: XNorm
-    var norm2: XNorm
+    var conv: SNConv2D<Float>
+    var norm: XNorm
     
     init(
         inputChannels: Int,
         outputChannels: Int,
-        residual: Bool,
         enableSpectralNorm: Bool,
         normalizationMethod: XNorm.Method,
         downSampleMethod: DownSampleMethod
     ) {
-        self.residual = residual
         self.downSampleMethod = downSampleMethod
         
-        let hiddenChannels = inputChannels
+        conv = SNConv2D(Conv2D(filterShape: (3, 3, inputChannels, outputChannels), padding: .same,
+                               filterInitializer: glorotUniform()),
+                        enabled: enableSpectralNorm)
         
-        conv1 = SNConv2D(Conv2D(filterShape: (3, 3, inputChannels, hiddenChannels), padding: .same,
-                                filterInitializer: glorotUniform(scale: sqrt(2))),
-                         enabled: enableSpectralNorm)
-        conv2 = SNConv2D(Conv2D(filterShape: (3, 3, hiddenChannels, outputChannels), padding: .same,
-                                filterInitializer: glorotUniform(scale: sqrt(2))),
-                         enabled: enableSpectralNorm)
         
-        convSC = SNConv2D(Conv2D(filterShape: (1, 1, inputChannels, outputChannels), padding: .same,
-                                 filterInitializer: glorotUniform()),
-                          enabled: enableSpectralNorm)
-        
-        norm1 = XNorm(method: normalizationMethod, dim: inputChannels)
-        norm2 = XNorm(method: normalizationMethod, dim: hiddenChannels)
+        norm = XNorm(method: normalizationMethod, dim: outputChannels)
     }
     
     @differentiable
     func callAsFunction(_ input: Tensor<Float>) -> Tensor<Float> {
-        var res = input
-        res = conv1(lrelu(norm1(res)))
-        res = conv2(lrelu(norm2(res)))
-        res = downsample(res)
-        
-        if residual {
-            let shortcut = convSC(downsample(input))
-            return res + shortcut
-        } else {
-            return res
-        }
+        var x = input
+        x = conv(x)
+        x = norm(x)
+        x = lrelu(x)
+        x = downsample(x)
+        return x
     }
     
     var avgPool = AvgPool2D<Float>(poolSize: (2, 2), strides: (2, 2))
@@ -76,7 +53,6 @@ struct DBlock: Layer {
 
 struct Discriminator: Layer {
     struct Options: Codable {
-        var residual: Bool
         var enableSpectralNorm: Bool
         var downSampleMethod: DBlock.DownSampleMethod
         var normalizationMethod: XNorm.Method
@@ -104,22 +80,18 @@ struct Discriminator: Layer {
                         enabled: options.enableSpectralNorm)
         
         block1 = DBlock(inputChannels: 16, outputChannels: 32,
-                        residual: options.residual,
                         enableSpectralNorm: options.enableSpectralNorm,
                         normalizationMethod: options.normalizationMethod,
                         downSampleMethod: options.downSampleMethod)
         block2 = DBlock(inputChannels: 32, outputChannels: 64,
-                        residual: options.residual,
                         enableSpectralNorm: options.enableSpectralNorm,
                         normalizationMethod: options.normalizationMethod,
                         downSampleMethod: options.downSampleMethod)
         block3 = DBlock(inputChannels: 64, outputChannels: 128,
-                        residual: options.residual,
                         enableSpectralNorm: options.enableSpectralNorm,
                         normalizationMethod: options.normalizationMethod,
                         downSampleMethod: options.downSampleMethod)
         block4 = DBlock(inputChannels: 128, outputChannels: 128,
-                        residual: options.residual,
                         enableSpectralNorm: options.enableSpectralNorm,
                         normalizationMethod: options.normalizationMethod,
                         downSampleMethod: options.downSampleMethod)

@@ -13,7 +13,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/t-ae/tensorboardx-s4tf.git", from: "0.0.6"),
-        .package(url: "https://github.com/t-ae/image-loader.git", from: "0.0.7"),
+        .package(url: "https://github.com/t-ae/image-loader.git", from: "0.1.0"),
     ],
     targets: [
         // Targets are the basic building blocks of a package. A target can define a module or a test suite.

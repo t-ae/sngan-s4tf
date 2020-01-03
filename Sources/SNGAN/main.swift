@@ -13,14 +13,12 @@ let nDisUpdate = 5 // D/G training ratio
 
 let generatorOptions = Generator.Options(
     latentSize: latentSize,
-    residual: true,
     upSampleMethod: .bilinear,
     enableSpectralNorm: true,
     normalizationMethod: .batchNorm,
     tanhOutput: false
 )
 let discriminatorOptions = Discriminator.Options(
-    residual: true,
     enableSpectralNorm: true,
     downSampleMethod: .avgPool,
     normalizationMethod: .none,
@@ -48,24 +46,17 @@ guard args.count == 2 else {
 }
 print("Seaerch images...")
 let imageDir = URL(fileURLWithPath: args[1])
-let loader = try ImageLoader(
-    directory: imageDir,
+let entries = [Entry](directory: imageDir)
+let loader = ImageLoader(
+    entries: entries,
     transforms: [
         Transforms.resizeBilinear(aspectFill: 64),
         Transforms.centerCrop(width: 64, height: 64)
     ],
-    parallel: true,
     rng: rng
 )
 print("Total images: \(loader.entries.count)")
 
-loader.onNextBatchEnd = { sec in
-    if printTime {
-        print("next: \(sec)sec")
-    }
-}
-
-let seq = BatchImageSequence(loader: loader, batchSize: batchSize, infinite: true)
 
 let plotGridCols = 8
 let testNoise = sampleNoise(batchSize: plotGridCols*plotGridCols, latentSize: latentSize)
@@ -92,77 +83,83 @@ writer.addText(tag: "\(logName)/discriminatorOptions", text: discriminatorOption
 writer.addText(tag: "\(logName)/nDisUpdate", text: String(nDisUpdate))
 
 // MARK: - Training loop
-for (step, batch) in seq.enumerated() {
-    if step % 10 == 0 {
-        print("step: \(step)")
-    }
-    
-    Context.local.learningPhase = .training
-    
-    var reals = batch.images
-    reals = reals * 2 - 1
-    
-    // MARK: Train generator
-    if step % nDisUpdate == 0 {
-        let gStart = Date()
-        let (lossG, 𝛁generator) = valueWithGradient(at: generator) { generator -> Tensor<Float> in
-            let noises = sampleNoise(batchSize: batchSize, latentSize: latentSize)
-            let fakes = generator(noises)
-            let scores = discriminator(fakes)
-            let loss = lossObj.lossG(scores)
+var step = 0
+for epoch in 0..<1000000 {
+    print("Epoch: \(epoch)")
+    for batch in loader.iterator(batchSize: batchSize) {
+        defer { step += 1 }
+        if step % 10 == 0 {
+            print("step: \(step)")
+        }
+        
+        Context.local.learningPhase = .training
+        
+        var reals = batch.images
+        reals = reals * 2 - 1
+        
+        // MARK: Train generator
+        if step % nDisUpdate == 0 {
+            let gStart = Date()
+            let (lossG, 𝛁generator) = valueWithGradient(at: generator) { generator -> Tensor<Float> in
+                let noises = sampleNoise(batchSize: batchSize, latentSize: latentSize)
+                let fakes = generator(noises)
+                let scores = discriminator(fakes)
+                let loss = lossObj.lossG(scores)
+                return loss
+            }
+            optG.update(&generator, along: 𝛁generator)
+            writer.addScalar(tag: "Loss/G", scalar: lossG.scalarized(), globalStep: step)
+            if printTime {
+                print("G train: \(Date().timeIntervalSince(gStart))sec")
+            }
+        }
+        
+        // MARK: Train discrminator
+        let dStart = Date()
+        let noises = sampleNoise(batchSize: batchSize, latentSize: latentSize)
+        let fakes = generator(noises)
+        let (lossD, 𝛁discriminator) = valueWithGradient(at: discriminator) { discriminator -> Tensor<Float> in
+            let fakeScores = discriminator(fakes)
+            
+            let realScores = discriminator(reals)
+            let loss = lossObj.lossD(real: realScores, fake: fakeScores)
             return loss
         }
-        optG.update(&generator, along: 𝛁generator)
-        writer.addScalar(tag: "Loss/G", scalar: lossG.scalarized(), globalStep: step)
+        optD.update(&discriminator, along: 𝛁discriminator)
+        writer.addScalar(tag: "Loss/D", scalar: lossD.scalarized(), globalStep: step)
         if printTime {
-            print("G train: \(Date().timeIntervalSince(gStart))sec")
+            print("D train: \(Date().timeIntervalSince(dStart))sec")
         }
-    }
-    
-    // MARK: Train discrminator
-    let dStart = Date()
-    let noises = sampleNoise(batchSize: batchSize, latentSize: latentSize)
-    let fakes = generator(noises)
-    let (lossD, 𝛁discriminator) = valueWithGradient(at: discriminator) { discriminator -> Tensor<Float> in
-        let fakeScores = discriminator(fakes)
         
-        let realScores = discriminator(reals)
-        let loss = lossObj.lossD(real: realScores, fake: fakeScores)
-        return loss
-    }
-    optD.update(&discriminator, along: 𝛁discriminator)
-    writer.addScalar(tag: "Loss/D", scalar: lossD.scalarized(), globalStep: step)
-    if printTime {
-        print("D train: \(Date().timeIntervalSince(dStart))sec")
-    }
-    
-    if step % 500 == 0 {
-        plotImages(tag: "reals", images: reals, globalStep: step)
-        plotImages(tag: "fakes", images: fakes, globalStep: step)
-        
-        generator.writeHistograms(writer: writer, globalStep: step)
-        discriminator.writeHistograms(writer: writer, globalStep: step)
-        
-        let fakeStd = fakes.standardDeviation(alongAxes: 0).mean().scalarized()
-        writer.addScalar(tag: "Value/fake_std", scalar: fakeStd, globalStep: step)
-        
-        let grad = gradient(at: fakes) { fakes -> Tensor<Float> in
-            let scores = discriminator(fakes)
-            return scores.sum()
+        if step % 500 == 0 {
+            plotImages(tag: "reals", images: reals, globalStep: step)
+            plotImages(tag: "fakes", images: fakes, globalStep: step)
+            
+            generator.writeHistograms(writer: writer, globalStep: step)
+            discriminator.writeHistograms(writer: writer, globalStep: step)
+            
+            let fakeStd = fakes.standardDeviation(alongAxes: 0).mean().scalarized()
+            writer.addScalar(tag: "Value/fake_std", scalar: fakeStd, globalStep: step)
+            
+            let grad = gradient(at: fakes) { fakes -> Tensor<Float> in
+                let scores = discriminator(fakes)
+                return scores.sum()
+            }
+            let gradnorm = sqrt(grad.squared().sum(squeezingAxes: [1, 2, 3])).mean()
+            writer.addScalar(tag: "Value/gradnorm", scalar: gradnorm.scalarized(), globalStep: step)
+            
+            writer.flush()
         }
-        let gradnorm = sqrt(grad.squared().sum(squeezingAxes: [1, 2, 3])).mean()
-        writer.addScalar(tag: "Value/gradnorm", scalar: gradnorm.scalarized(), globalStep: step)
         
-        writer.flush()
-    }
-    
-    if step % 5000 == 0 {
-        // Inference
-        Context.local.learningPhase = .inference
-        let testImage = generator(testNoise)
-        plotImages(tag: "tests", images: testImage, globalStep: step)
-        writer.flush()
+        if step % 5000 == 0 {
+            // Inference
+            Context.local.learningPhase = .inference
+            let testImage = generator(testNoise)
+            plotImages(tag: "tests", images: testImage, globalStep: step)
+            writer.flush()
+        }
     }
 }
+
 
 writer.close()

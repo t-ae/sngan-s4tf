@@ -8,60 +8,37 @@ struct GBlock: Layer {
     }
     
     @noDerivative
-    let residual: Bool
-    @noDerivative
     let upsampleMethod: UpSampleMethod
     
-    var conv1: SNConv2D<Float>
-    var conv2: SNConv2D<Float>
-    
-    var convSC: SNConv2D<Float>
-    
-    var norm1: XNorm
-    var norm2: XNorm
+    var conv: SNConv2D<Float>
+    var norm: XNorm
     
     init(
         inputChannels: Int,
         outputChannels: Int,
-        residual: Bool,
         enableSpectralNorm: Bool,
         upsampleMethod: UpSampleMethod,
         normalizationMethod: XNorm.Method
     ) {
-        self.residual = residual
         self.upsampleMethod = upsampleMethod
         
-        let hiddenChannels = inputChannels
-        
-        conv1 = SNConv2D(Conv2D(filterShape: (3, 3, inputChannels, hiddenChannels), padding: .same,
-                                filterInitializer: glorotUniform(scale: sqrt(2))),
-                         enabled: enableSpectralNorm)
-        conv2 = SNConv2D(Conv2D(filterShape: (3, 3, hiddenChannels, outputChannels), padding: .same,
+        conv = SNConv2D(Conv2D(filterShape: (3, 3, inputChannels, outputChannels), padding: .same,
                                 filterInitializer: glorotUniform(scale: sqrt(2))),
                          enabled: enableSpectralNorm)
         
-        norm1 = XNorm(method: normalizationMethod, dim: inputChannels)
-        norm2 = XNorm(method: normalizationMethod, dim: hiddenChannels)
-        
-        convSC = SNConv2D(Conv2D(filterShape: (1, 1, inputChannels, outputChannels), padding: .same,
-                                 filterInitializer: glorotUniform()),
-                          enabled: enableSpectralNorm)
+        norm = XNorm(method: normalizationMethod, dim: outputChannels)
     }
     
     @differentiable
     func callAsFunction(_ input: Tensor<Float>) -> Tensor<Float> {
-        var res = input
-        res = lrelu(norm1(res))
-        res = conv1(upsample(res))
-        res = lrelu(norm2(res))
-        res = conv2(res)
+        var x = input
         
-        if residual {
-            let shortcut = convSC(upsample(input))
-            return res + shortcut
-        } else {
-            return res
-        }
+        x = upsample(x)
+        x = conv(x)
+        x = norm(x)
+        x = lrelu(x)
+        
+        return x
     }
     
     var upsampling = UpSampling2D<Float>(size: 2)
@@ -80,7 +57,6 @@ struct GBlock: Layer {
 struct Generator: Layer {
     struct Options: Codable {
         var latentSize: Int
-        var residual: Bool
         var upSampleMethod: GBlock.UpSampleMethod
         var enableSpectralNorm: Bool
         var normalizationMethod: XNorm.Method
@@ -106,22 +82,18 @@ struct Generator: Layer {
                              weightInitializer: glorotUniform()),
                        enabled: options.enableSpectralNorm)
         block1 = GBlock(inputChannels: 128, outputChannels: 128,
-                        residual: options.residual,
                         enableSpectralNorm: options.enableSpectralNorm,
                         upsampleMethod: options.upSampleMethod,
                         normalizationMethod: options.normalizationMethod)
         block2 = GBlock(inputChannels: 128, outputChannels: 64,
-                        residual: options.residual,
                         enableSpectralNorm: options.enableSpectralNorm,
                         upsampleMethod: options.upSampleMethod,
                         normalizationMethod: options.normalizationMethod)
         block3 = GBlock(inputChannels: 64, outputChannels: 32,
-                        residual: options.residual,
                         enableSpectralNorm: options.enableSpectralNorm,
                         upsampleMethod: options.upSampleMethod,
                         normalizationMethod: options.normalizationMethod)
         block4 = GBlock(inputChannels: 32, outputChannels: 16,
-                        residual: options.residual,
                         enableSpectralNorm: options.enableSpectralNorm,
                         upsampleMethod: options.upSampleMethod,
                         normalizationMethod: options.normalizationMethod)

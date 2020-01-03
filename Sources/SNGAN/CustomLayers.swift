@@ -10,20 +10,24 @@ public func lrelu<Scalar: TensorFlowFloatingPoint>(_ tensor: Tensor<Scalar>) -> 
 // MARK: - Upsampling conv
 struct UpSamplingConv2D: Layer {
     enum Method: String, Codable {
-        case convStride, nearestNeighbor, bilinear, depthToSpace
+        case nearestNeighbor, bilinear, depthToSpace
     }
     
     @noDerivative
     var method: Method
-    var conv: SN<TransposedConv2D<Float>>
+    var conv: SNConv2D<Float>
     
-    init(inputDim: Int, outputDim: Int, kernelSize: Int, method: Method) {
+    init(inputDim: Int,
+         outputDim: Int,
+         kernelSize: Int,
+         method: Method,
+         enableSpectralNorm: Bool) {
         self.method = method
         let depthFactor = method == .depthToSpace ? 4 : 1
-        let strides = method == .convStride ? (2, 2) : (1, 1)
-        let filterShape = (kernelSize, kernelSize, outputDim*depthFactor, inputDim)
-        conv = SN(TransposedConv2D(filterShape: filterShape, strides: strides,
-                                   padding: .same, filterInitializer: heNormal()))
+        let filterShape = (kernelSize, kernelSize, inputDim, outputDim*depthFactor)
+        conv = SNConv2D(Conv2D(filterShape: filterShape, strides: (1, 1),
+                               padding: .same, filterInitializer: heNormal()),
+                        enabled: enableSpectralNorm)
     }
     
     var upsampling = UpSampling2D<Float>(size: 2)
@@ -33,8 +37,6 @@ struct UpSamplingConv2D: Layer {
         var x = conv(input)
         
         switch method {
-        case .convStride:
-            break
         case .nearestNeighbor:
             x = upsampling(x)
         case .bilinear:
@@ -44,10 +46,6 @@ struct UpSamplingConv2D: Layer {
         }
         
         return x
-    }
-    
-    var filter: Tensor<Float> {
-        conv.filter
     }
 }
 
@@ -59,13 +57,18 @@ struct DownSamplingConv2D: Layer {
     
     @noDerivative
     var method: Method
-    var conv: SN<Conv2D<Float>>
+    var conv: SNConv2D<Float>
     
-    init(inputDIm: Int, outputDim: Int, kernelSize: Int, method: Method) {
+    init(inputDIm: Int,
+         outputDim: Int,
+         kernelSize: Int,
+         method: Method,
+         enableSpectralNorm: Bool) {
         self.method = method
         let strides = method == .convStride ? (2, 2) : (1, 1)
-        conv = SN(Conv2D(filterShape: (kernelSize, kernelSize, inputDIm, outputDim), strides: strides,
-                         padding: .same, filterInitializer: heNormal()))
+        conv = SNConv2D(Conv2D(filterShape: (kernelSize, kernelSize, inputDIm, outputDim),
+                               strides: strides, padding: .same, filterInitializer: heNormal()),
+                        enabled: enableSpectralNorm)
     }
     
     var avgPool = AvgPool2D<Float>(poolSize: (2, 2), strides: (2, 2))
@@ -82,10 +85,6 @@ struct DownSamplingConv2D: Layer {
         }
         
         return x
-    }
-    
-    var filter: Tensor<Float> {
-        conv.filter
     }
 }
 
