@@ -17,7 +17,8 @@ let generatorOptions = Generator.Options(
     enableSpectralNorm: true,
     normalizationMethod: .batchNorm,
     activation: .elu,
-    tanhOutput: false
+    tanhOutput: false,
+    avoidPadding: false
 )
 let discriminatorOptions = Discriminator.Options(
     enableSpectralNorm: true,

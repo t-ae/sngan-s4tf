@@ -23,6 +23,21 @@ final class CustomLayersTests: XCTestCase {
         XCTAssertEqual(out[7, 0, 0, 1], out[1, 0, 0, 1])
     }
     
+    func testActivation() {
+        let act = Activation(method: .leakyRelu)
+        let input = Tensor<Float>(randomNormal: [100, 100])
+        
+        XCTAssertEqual(act(input), leakyRelu(input))
+        
+        let g = gradient(at: input) { input in
+            act(input).sum()
+        }
+        let g2 = gradient(at: input) { input in
+            leakyRelu(input).sum()
+        }
+        XCTAssertEqual(g, g2)
+    }
+    
     static var allTests = [
         ("testMinibatchStdConcat", testMinibatchStdConcat),
     ]

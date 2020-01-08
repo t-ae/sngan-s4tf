@@ -19,11 +19,14 @@ struct GBlock: Layer {
         enableSpectralNorm: Bool,
         upsampleMethod: Resize.Method,
         normalizationMethod: XNorm.Method,
-        activation: Activation
+        activation: Activation,
+        avoidPadding: Bool
     ) {
         self.upsampleMethod = upsampleMethod
         
-        conv = SNConv2D(Conv2D(filterShape: (3, 3, inputShape.2, outputChannels), padding: .valid,
+        let pad: Padding = avoidPadding ? .valid : .same
+        
+        conv = SNConv2D(Conv2D(filterShape: (3, 3, inputShape.2, outputChannels), padding: pad,
                                 filterInitializer: glorotUniform(scale: sqrt(2))),
                          enabled: enableSpectralNorm)
         
@@ -32,8 +35,8 @@ struct GBlock: Layer {
         self.activation = activation
         
         // +2 to avoid padding
-        let resizeW = inputShape.1 * 2 + 2
-        let resizeH = inputShape.0 * 2 + 2
+        let resizeW = inputShape.1 * 2 + (avoidPadding ? 2 : 0)
+        let resizeH = inputShape.0 * 2 + (avoidPadding ? 2 : 0)
         self.resize = Resize(width: resizeW, height: resizeH, method: upsampleMethod, alignCorners: true)
     }
     
@@ -58,6 +61,7 @@ struct Generator: Layer {
         var normalizationMethod: XNorm.Method
         var activation: Activation.Method
         var tanhOutput: Bool
+        var avoidPadding: Bool
     }
     
     @noDerivative
@@ -83,22 +87,26 @@ struct Generator: Layer {
                         enableSpectralNorm: options.enableSpectralNorm,
                         upsampleMethod: options.upSampleMethod,
                         normalizationMethod: options.normalizationMethod,
-                        activation: activation)
+                        activation: activation,
+                        avoidPadding: options.avoidPadding)
         block2 = GBlock(inputShape: (8, 8, 128), outputChannels: 64,
                         enableSpectralNorm: options.enableSpectralNorm,
                         upsampleMethod: options.upSampleMethod,
                         normalizationMethod: options.normalizationMethod,
-                        activation: activation)
+                        activation: activation,
+                        avoidPadding: options.avoidPadding)
         block3 = GBlock(inputShape: (16, 16, 64), outputChannels: 32,
                         enableSpectralNorm: options.enableSpectralNorm,
                         upsampleMethod: options.upSampleMethod,
                         normalizationMethod: options.normalizationMethod,
-                        activation: activation)
+                        activation: activation,
+                        avoidPadding: options.avoidPadding)
         block4 = GBlock(inputShape: (32, 32, 32), outputChannels: 16,
                         enableSpectralNorm: options.enableSpectralNorm,
                         upsampleMethod: options.upSampleMethod,
                         normalizationMethod: options.normalizationMethod,
-                        activation: activation)
+                        activation: activation,
+                        avoidPadding: options.avoidPadding)
         
         // SN disabled
         tail = SNConv2D(Conv2D(filterShape: (3, 3, 16, 3), padding: .same,
