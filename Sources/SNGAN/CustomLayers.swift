@@ -142,3 +142,35 @@ struct Activation: ParameterlessLayer {
         }
     }
 }
+
+struct Resize: ParameterlessLayer {
+    enum Method: String, Codable {
+        case nearestNeighbor, bilinear
+    }
+    
+    @noDerivative
+    let width: Int
+    @noDerivative
+    let height: Int
+    @noDerivative
+    let method: Method
+    @noDerivative
+    let alignCorners: Bool
+    
+    init(width: Int, height: Int, method: Method, alignCorners: Bool) {
+        self.width = width
+        self.height = height
+        self.method = method
+        self.alignCorners = alignCorners
+    }
+    
+    @differentiable
+    func callAsFunction(_ input: Tensor<Float>) -> Tensor<Float> {
+        switch method {
+        case .nearestNeighbor:
+            return resizeNN(images: input, width: width, height: height, alignCorners: alignCorners)
+        case .bilinear:
+            return resizeBL(images: input, width: width, height: height, alignCorners: alignCorners)
+        }
+    }
+}

@@ -46,9 +46,65 @@ public func resize2xBilinear(images: Tensor<Float>) -> Tensor<Float> {
                                alignCorners: true)
 }
 
+//@derivative(of: resize2xBilinear)
 public func vjpResize2xBilinear(images: Tensor<Float>) -> (Tensor<Float>, (Tensor<Float>)->Tensor<Float>) {
     let resized = resize2xBilinear(images: images)
     return (resized, { v in
         _Raw.resizeBilinearGrad(grads: v, originalImage: images, alignCorners: true)
+    })
+}
+
+@differentiable(wrt: images, vjp: vjpResizeNN)
+public func resizeNN(images: Tensor<Float>,
+                     width: Int,
+                     height: Int,
+                     alignCorners: Bool) -> Tensor<Float> {
+    return _Raw.resizeNearestNeighbor(images: images,
+                                      size: Tensor([Int32(height), Int32(width)]),
+                                      alignCorners: true)
+}
+
+//@derivative(of: resizeNN)
+public func vjpResizeNN(
+    images: Tensor<Float>,
+    width: Int,
+    height: Int,
+    alignCorners: Bool
+) -> (value: Tensor<Float>, pullback: (Tensor<Float>)->Tensor<Float>) {
+    let resized = resize2xBilinear(images: images)
+    return (resized, { v in
+        _Raw.resizeNearestNeighborGrad(grads: v,
+                                       size: Tensor([Int32(height), Int32(width)]),
+                                       alignCorners: alignCorners)
+//        (grads: v, originalImage: images, alignCorners: true)
+    })
+}
+
+
+@differentiable(wrt: images, vjp: vjpResizeBL)
+public func resizeBL(images: Tensor<Float>,
+                     width: Int,
+                     height: Int,
+                     alignCorners: Bool) -> Tensor<Float> {
+    return _Raw.resizeBilinear(images: images,
+                               size: Tensor([Int32(height), Int32(width)]),
+                               alignCorners: true)
+}
+
+//@derivative(of: resizeBL)
+public func vjpResizeBL(
+    images: Tensor<Float>,
+    width: Int,
+    height: Int,
+    alignCorners: Bool
+) -> (value: Tensor<Float>, pullback: (Tensor<Float>)->Tensor<Float>) {
+    let resized = resizeBL(images: images,
+                           width: width,
+                           height: height,
+                           alignCorners: alignCorners)
+    return (resized, { v in
+        _Raw.resizeBilinearGrad(grads: v,
+                                originalImage: images,
+                                alignCorners: alignCorners)
     })
 }

@@ -3,66 +3,57 @@ import TensorBoardX
 import CustomLayers
 
 struct GBlock: Layer {
-    enum UpSampleMethod: String, Codable {
-        case nearestNeighbor, bilinear
-    }
-    
     @noDerivative
-    let upsampleMethod: UpSampleMethod
+    let upsampleMethod: Resize.Method
     
     var conv: SNConv2D<Float>
     var norm: XNorm
     
     var activation: Activation
     
+    var resize: Resize
+    
     init(
-        inputChannels: Int,
+        inputShape: (Int, Int, Int),
         outputChannels: Int,
         enableSpectralNorm: Bool,
-        upsampleMethod: UpSampleMethod,
+        upsampleMethod: Resize.Method,
         normalizationMethod: XNorm.Method,
         activation: Activation
     ) {
         self.upsampleMethod = upsampleMethod
         
-        conv = SNConv2D(Conv2D(filterShape: (3, 3, inputChannels, outputChannels), padding: .same,
+        conv = SNConv2D(Conv2D(filterShape: (3, 3, inputShape.2, outputChannels), padding: .valid,
                                 filterInitializer: glorotUniform(scale: sqrt(2))),
                          enabled: enableSpectralNorm)
         
         norm = XNorm(method: normalizationMethod, dim: outputChannels)
         
         self.activation = activation
+        
+        // +2 to avoid padding
+        let resizeW = inputShape.1 * 2 + 2
+        let resizeH = inputShape.0 * 2 + 2
+        self.resize = Resize(width: resizeW, height: resizeH, method: upsampleMethod, alignCorners: true)
     }
     
     @differentiable
     func callAsFunction(_ input: Tensor<Float>) -> Tensor<Float> {
         var x = input
         
-        x = upsample(x)
+        x = resize(x)
         x = conv(x)
         x = norm(x)
         x = activation(x)
         
         return x
     }
-    
-    var upsampling = UpSampling2D<Float>(size: 2)
-    
-    @differentiable
-    func upsample(_ x: Tensor<Float>) -> Tensor<Float> {
-        switch upsampleMethod {
-        case .nearestNeighbor:
-            return upsampling(x)
-        case .bilinear:
-            return resize2xBilinear(images: x)
-        }
-    }
 }
 
 struct Generator: Layer {
     struct Options: Codable {
         var latentSize: Int
-        var upSampleMethod: GBlock.UpSampleMethod
+        var upSampleMethod: Resize.Method
         var enableSpectralNorm: Bool
         var normalizationMethod: XNorm.Method
         var activation: Activation.Method
@@ -88,22 +79,22 @@ struct Generator: Layer {
         head = SNDense(Dense(inputSize: options.latentSize, outputSize: 4*4*128,
                              weightInitializer: glorotUniform()),
                        enabled: options.enableSpectralNorm)
-        block1 = GBlock(inputChannels: 128, outputChannels: 128,
+        block1 = GBlock(inputShape: (4, 4, 128), outputChannels: 128,
                         enableSpectralNorm: options.enableSpectralNorm,
                         upsampleMethod: options.upSampleMethod,
                         normalizationMethod: options.normalizationMethod,
                         activation: activation)
-        block2 = GBlock(inputChannels: 128, outputChannels: 64,
+        block2 = GBlock(inputShape: (8, 8, 128), outputChannels: 64,
                         enableSpectralNorm: options.enableSpectralNorm,
                         upsampleMethod: options.upSampleMethod,
                         normalizationMethod: options.normalizationMethod,
                         activation: activation)
-        block3 = GBlock(inputChannels: 64, outputChannels: 32,
+        block3 = GBlock(inputShape: (16, 16, 64), outputChannels: 32,
                         enableSpectralNorm: options.enableSpectralNorm,
                         upsampleMethod: options.upSampleMethod,
                         normalizationMethod: options.normalizationMethod,
                         activation: activation)
-        block4 = GBlock(inputChannels: 32, outputChannels: 16,
+        block4 = GBlock(inputShape: (32, 32, 32), outputChannels: 16,
                         enableSpectralNorm: options.enableSpectralNorm,
                         upsampleMethod: options.upSampleMethod,
                         normalizationMethod: options.normalizationMethod,
