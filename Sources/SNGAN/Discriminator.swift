@@ -69,8 +69,6 @@ struct Discriminator: Layer {
     var block4: DBlock
     var tail: SNConv2D<Float>
     
-    var norm: XNorm
-    
     var stdConcat: MinibatchStdConcat<Float>
     
     init(options: Options) {
@@ -100,20 +98,17 @@ struct Discriminator: Layer {
         stdConcat = MinibatchStdConcat(groupSize: 4)
         tail = SNConv2D(Conv2D(filterShape: (4, 4, 128 + stdDim, 1), filterInitializer: glorotUniform()),
                         enabled: options.enableSpectralNorm)
-        
-        norm = XNorm(method: options.normalizationMethod, dim: 128)
     }
     
     @differentiable
     func callAsFunction(_ input: Tensor<Float>) -> Tensor<Float> {
         var x = input
         
-        x = head(x) // [-1, 64, 64, 16]
+        x = lrelu(head(x)) // [-1, 64, 64, 16]
         x = block1(x) // [-1, 32, 32, 32]
         x = block2(x) // [-1, 16, 16, 64]
         x = block3(x) // [-1, 8, 8, 128]
         x = block4(x) // [-1, 4, 4, 128]
-        x = lrelu(norm(x))
         
         if options.enableMinibatchStdConcat {
             x = stdConcat(x)  // [-1, 4, 4, 129]

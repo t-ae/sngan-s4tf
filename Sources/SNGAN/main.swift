@@ -29,8 +29,6 @@ let discriminatorOptions = Discriminator.Options(
 //let lossObj = NonSaturatingLoss()
 let lossObj = HingeLoss()
 
-let printTime = false
-
 // MARK: - Model definition
 var generator = Generator(options: generatorOptions)
 var discriminator = Discriminator(options: discriminatorOptions)
@@ -86,6 +84,8 @@ writer.addText(tag: "\(logName)/nDisUpdate", text: String(nDisUpdate))
 var step = 0
 for epoch in 0..<1000000 {
     print("Epoch: \(epoch)")
+    loader.shuffle()
+    
     for batch in loader.iterator(batchSize: batchSize) {
         defer { step += 1 }
         if step % 10 == 0 {
@@ -99,7 +99,6 @@ for epoch in 0..<1000000 {
         
         // MARK: Train generator
         if step % nDisUpdate == 0 {
-            let gStart = Date()
             let (lossG, 𝛁generator) = valueWithGradient(at: generator) { generator -> Tensor<Float> in
                 let noises = sampleNoise(batchSize: batchSize, latentSize: latentSize)
                 let fakes = generator(noises)
@@ -109,13 +108,9 @@ for epoch in 0..<1000000 {
             }
             optG.update(&generator, along: 𝛁generator)
             writer.addScalar(tag: "Loss/G", scalar: lossG.scalarized(), globalStep: step)
-            if printTime {
-                print("G train: \(Date().timeIntervalSince(gStart))sec")
-            }
         }
         
         // MARK: Train discrminator
-        let dStart = Date()
         let noises = sampleNoise(batchSize: batchSize, latentSize: latentSize)
         let fakes = generator(noises)
         let (lossD, 𝛁discriminator) = valueWithGradient(at: discriminator) { discriminator -> Tensor<Float> in
@@ -127,9 +122,6 @@ for epoch in 0..<1000000 {
         }
         optD.update(&discriminator, along: 𝛁discriminator)
         writer.addScalar(tag: "Loss/D", scalar: lossD.scalarized(), globalStep: step)
-        if printTime {
-            print("D train: \(Date().timeIntervalSince(dStart))sec")
-        }
         
         if step % 500 == 0 {
             plotImages(tag: "reals", images: reals, globalStep: step)

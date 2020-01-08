@@ -73,8 +73,6 @@ struct Generator: Layer {
     var block4: GBlock
     var tail: SNConv2D<Float>
     
-    var norm: XNorm
-    
     init(options: Options) {
         self.options = options
         
@@ -102,21 +100,18 @@ struct Generator: Layer {
         tail = SNConv2D(Conv2D(filterShape: (3, 3, 16, 3), padding: .same,
                                filterInitializer: glorotUniform()),
                         enabled: false)
-        norm = XNorm(method: options.normalizationMethod, dim: 16)
-        
     }
     
     @differentiable
     func callAsFunction(_ input: Tensor<Float>) -> Tensor<Float> {
         var x = input
         
-        x = head(x) // [-1, 4*4*128]
+        x = lrelu(head(x)) // [-1, 4*4*128]
         x = x.reshaped(to: [-1, 4 ,4, 128])
         x = block1(x) // [-1, 8, 8, 128]
         x = block2(x) // [-1, 16, 16, 64]
         x = block3(x) // [-1, 32, 32, 32]
         x = block4(x) // [-1, 64, 64, 16]
-        x = lrelu(norm(x))
         x = tail(x)
         
         if options.tanhOutput {
