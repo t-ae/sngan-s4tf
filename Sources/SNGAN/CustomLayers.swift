@@ -2,11 +2,6 @@ import TensorFlow
 import TensorBoardX
 import CustomLayers
 
-@differentiable
-public func lrelu<Scalar: TensorFlowFloatingPoint>(_ tensor: Tensor<Scalar>) -> Tensor<Scalar> {
-    leakyRelu(tensor)
-}
-
 // MARK: - Upsampling conv
 struct UpSamplingConv2D: Layer {
     enum Method: String, Codable {
@@ -120,6 +115,30 @@ struct XNorm: Layer {
             return batchNorm(input)
         case .pixelNorm:
             return pixelNorm(input)
+        }
+    }
+}
+
+struct Activation: ParameterlessLayer {
+    enum Method: String, Codable {
+        case relu, leakyRelu, elu
+    }
+    
+    let method: Method
+    
+    init(method: Method) {
+        self.method = method
+    }
+    
+    @differentiable
+    func callAsFunction(_ input: Tensor<Float>) -> Tensor<Float> {
+        switch method {
+        case .relu:
+            return relu(input)
+        case .leakyRelu:
+            return leakyRelu(input)
+        case .elu:
+            return elu(input)
         }
     }
 }

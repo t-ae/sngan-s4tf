@@ -16,12 +16,14 @@ let generatorOptions = Generator.Options(
     upSampleMethod: .bilinear,
     enableSpectralNorm: true,
     normalizationMethod: .batchNorm,
+    activation: .elu,
     tanhOutput: false
 )
 let discriminatorOptions = Discriminator.Options(
     enableSpectralNorm: true,
     downSampleMethod: .avgPool,
     normalizationMethod: .none,
+    activation: .elu,
     enableMinibatchStdConcat: true
 )
 

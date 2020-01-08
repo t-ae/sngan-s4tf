@@ -13,12 +13,15 @@ struct DBlock: Layer {
     var conv: SNConv2D<Float>
     var norm: XNorm
     
+    var activation: Activation
+    
     init(
         inputChannels: Int,
         outputChannels: Int,
         enableSpectralNorm: Bool,
         normalizationMethod: XNorm.Method,
-        downSampleMethod: DownSampleMethod
+        downSampleMethod: DownSampleMethod,
+        activation: Activation
     ) {
         self.downSampleMethod = downSampleMethod
         
@@ -26,8 +29,9 @@ struct DBlock: Layer {
                                filterInitializer: glorotUniform()),
                         enabled: enableSpectralNorm)
         
-        
         norm = XNorm(method: normalizationMethod, dim: outputChannels)
+        
+        self.activation = activation
     }
     
     @differentiable
@@ -35,7 +39,7 @@ struct DBlock: Layer {
         var x = input
         x = conv(x)
         x = norm(x)
-        x = lrelu(x)
+        x = activation(x)
         x = downsample(x)
         return x
     }
@@ -56,6 +60,7 @@ struct Discriminator: Layer {
         var enableSpectralNorm: Bool
         var downSampleMethod: DBlock.DownSampleMethod
         var normalizationMethod: XNorm.Method
+        var activation: Activation.Method
         var enableMinibatchStdConcat: Bool
     }
     
@@ -71,8 +76,11 @@ struct Discriminator: Layer {
     
     var stdConcat: MinibatchStdConcat<Float>
     
+    var activation: Activation
+    
     init(options: Options) {
         self.options = options
+        self.activation = Activation(method: options.activation)
         
         head = SNConv2D(Conv2D(filterShape: (1, 1, 3, 16), filterInitializer: glorotUniform()),
                         enabled: options.enableSpectralNorm)
@@ -80,19 +88,23 @@ struct Discriminator: Layer {
         block1 = DBlock(inputChannels: 16, outputChannels: 32,
                         enableSpectralNorm: options.enableSpectralNorm,
                         normalizationMethod: options.normalizationMethod,
-                        downSampleMethod: options.downSampleMethod)
+                        downSampleMethod: options.downSampleMethod,
+                        activation: activation)
         block2 = DBlock(inputChannels: 32, outputChannels: 64,
                         enableSpectralNorm: options.enableSpectralNorm,
                         normalizationMethod: options.normalizationMethod,
-                        downSampleMethod: options.downSampleMethod)
+                        downSampleMethod: options.downSampleMethod,
+                        activation: activation)
         block3 = DBlock(inputChannels: 64, outputChannels: 128,
                         enableSpectralNorm: options.enableSpectralNorm,
                         normalizationMethod: options.normalizationMethod,
-                        downSampleMethod: options.downSampleMethod)
+                        downSampleMethod: options.downSampleMethod,
+                        activation: activation)
         block4 = DBlock(inputChannels: 128, outputChannels: 128,
                         enableSpectralNorm: options.enableSpectralNorm,
                         normalizationMethod: options.normalizationMethod,
-                        downSampleMethod: options.downSampleMethod)
+                        downSampleMethod: options.downSampleMethod,
+                        activation: activation)
         
         let stdDim = options.enableMinibatchStdConcat ? 1 : 0
         stdConcat = MinibatchStdConcat(groupSize: 4)
@@ -104,7 +116,7 @@ struct Discriminator: Layer {
     func callAsFunction(_ input: Tensor<Float>) -> Tensor<Float> {
         var x = input
         
-        x = lrelu(head(x)) // [-1, 64, 64, 16]
+        x = activation(head(x)) // [-1, 64, 64, 16]
         x = block1(x) // [-1, 32, 32, 32]
         x = block2(x) // [-1, 16, 16, 64]
         x = block3(x) // [-1, 8, 8, 128]

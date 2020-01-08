@@ -13,12 +13,15 @@ struct GBlock: Layer {
     var conv: SNConv2D<Float>
     var norm: XNorm
     
+    var activation: Activation
+    
     init(
         inputChannels: Int,
         outputChannels: Int,
         enableSpectralNorm: Bool,
         upsampleMethod: UpSampleMethod,
-        normalizationMethod: XNorm.Method
+        normalizationMethod: XNorm.Method,
+        activation: Activation
     ) {
         self.upsampleMethod = upsampleMethod
         
@@ -27,6 +30,8 @@ struct GBlock: Layer {
                          enabled: enableSpectralNorm)
         
         norm = XNorm(method: normalizationMethod, dim: outputChannels)
+        
+        self.activation = activation
     }
     
     @differentiable
@@ -36,7 +41,7 @@ struct GBlock: Layer {
         x = upsample(x)
         x = conv(x)
         x = norm(x)
-        x = lrelu(x)
+        x = activation(x)
         
         return x
     }
@@ -60,6 +65,7 @@ struct Generator: Layer {
         var upSampleMethod: GBlock.UpSampleMethod
         var enableSpectralNorm: Bool
         var normalizationMethod: XNorm.Method
+        var activation: Activation.Method
         var tanhOutput: Bool
     }
     
@@ -73,8 +79,11 @@ struct Generator: Layer {
     var block4: GBlock
     var tail: SNConv2D<Float>
     
+    var activation: Activation
+    
     init(options: Options) {
         self.options = options
+        self.activation = Activation(method: options.activation)
         
         head = SNDense(Dense(inputSize: options.latentSize, outputSize: 4*4*128,
                              weightInitializer: glorotUniform()),
@@ -82,19 +91,23 @@ struct Generator: Layer {
         block1 = GBlock(inputChannels: 128, outputChannels: 128,
                         enableSpectralNorm: options.enableSpectralNorm,
                         upsampleMethod: options.upSampleMethod,
-                        normalizationMethod: options.normalizationMethod)
+                        normalizationMethod: options.normalizationMethod,
+                        activation: activation)
         block2 = GBlock(inputChannels: 128, outputChannels: 64,
                         enableSpectralNorm: options.enableSpectralNorm,
                         upsampleMethod: options.upSampleMethod,
-                        normalizationMethod: options.normalizationMethod)
+                        normalizationMethod: options.normalizationMethod,
+                        activation: activation)
         block3 = GBlock(inputChannels: 64, outputChannels: 32,
                         enableSpectralNorm: options.enableSpectralNorm,
                         upsampleMethod: options.upSampleMethod,
-                        normalizationMethod: options.normalizationMethod)
+                        normalizationMethod: options.normalizationMethod,
+                        activation: activation)
         block4 = GBlock(inputChannels: 32, outputChannels: 16,
                         enableSpectralNorm: options.enableSpectralNorm,
                         upsampleMethod: options.upSampleMethod,
-                        normalizationMethod: options.normalizationMethod)
+                        normalizationMethod: options.normalizationMethod,
+                        activation: activation)
         
         // SN disabled
         tail = SNConv2D(Conv2D(filterShape: (3, 3, 16, 3), padding: .same,
@@ -106,7 +119,7 @@ struct Generator: Layer {
     func callAsFunction(_ input: Tensor<Float>) -> Tensor<Float> {
         var x = input
         
-        x = lrelu(head(x)) // [-1, 4*4*128]
+        x = activation(head(x)) // [-1, 4*4*128]
         x = x.reshaped(to: [-1, 4 ,4, 128])
         x = block1(x) // [-1, 8, 8, 128]
         x = block2(x) // [-1, 16, 16, 64]
