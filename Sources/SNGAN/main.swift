@@ -7,9 +7,9 @@ Context.local.randomSeed = (42, 42)
 let rng = XorshiftRandomNumberGenerator()
 
 // MARK: - Configurations
-let batchSize = 32
+let batchSize = 64
 let latentSize = 128
-let nDisUpdate = 5 // D/G training ratio
+let nDisUpdate = 3 // D/G training ratio
 
 let generatorOptions = Generator.Options(
     latentSize: latentSize,
