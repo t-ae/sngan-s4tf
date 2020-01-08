@@ -140,7 +140,7 @@ public struct SNDense<Scalar: TensorFlowFloatingPoint>: Layer {
         let sigma = matmul(matmul(u, mat), v.value.transposed()) // [1, 1]
         
         // detach sigma
-        return dense.weight / withoutDerivative(at: sigma)
+        return dense.weight / sigma
     }
     
     @differentiable
@@ -184,7 +184,7 @@ public struct SNConv2D<Scalar: TensorFlowFloatingPoint>: Layer {
         let sigma = matmul(matmul(u, mat), v.value.transposed()) // [1, 1]
         
         // detach sigma
-        return conv.filter / withoutDerivative(at: sigma)
+        return conv.filter / sigma
     }
     
     @differentiable
