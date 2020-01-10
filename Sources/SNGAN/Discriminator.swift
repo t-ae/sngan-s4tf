@@ -10,8 +10,10 @@ struct DBlock: Layer {
     @noDerivative
     let downSampleMethod: DownSampleMethod
     
-    var conv: SNConv2D<Float>
-    var norm: XNorm
+    var conv1: SNConv2D<Float>
+    var conv2: SNConv2D<Float>
+    var norm1: XNorm
+    var norm2: XNorm
     
     var activation: Activation
     
@@ -25,11 +27,15 @@ struct DBlock: Layer {
     ) {
         self.downSampleMethod = downSampleMethod
         
-        conv = SNConv2D(Conv2D(filterShape: (3, 3, inputChannels, outputChannels), padding: .same,
-                               filterInitializer: heNormal()),
-                        enabled: enableSpectralNorm)
+        conv1 = SNConv2D(Conv2D(filterShape: (3, 3, inputChannels, outputChannels), padding: .same,
+                                filterInitializer: heNormal()),
+                         enabled: enableSpectralNorm)
+        conv2 = SNConv2D(Conv2D(filterShape: (3, 3, outputChannels, outputChannels), padding: .same,
+                                filterInitializer: heNormal()),
+                         enabled: enableSpectralNorm)
         
-        norm = XNorm(method: normalizationMethod, dim: outputChannels)
+        norm1 = XNorm(method: normalizationMethod, dim: outputChannels)
+        norm2 = XNorm(method: normalizationMethod, dim: outputChannels)
         
         self.activation = activation
     }
@@ -37,8 +43,11 @@ struct DBlock: Layer {
     @differentiable
     func callAsFunction(_ input: Tensor<Float>) -> Tensor<Float> {
         var x = input
-        x = conv(x)
-        x = norm(x)
+        x = conv1(x)
+        x = norm1(x)
+        x = activation(x)
+        x = conv2(x)
+        x = norm2(x)
         x = activation(x)
         x = downsample(x)
         return x

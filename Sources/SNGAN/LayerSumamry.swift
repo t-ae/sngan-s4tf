@@ -24,12 +24,14 @@ extension SNConv2D: HistogramWritable where Scalar == Float {
 
 extension GBlock: HistogramWritable {
     func writeHistograms(tag: String, writer: SummaryWriter, globalStep: Int?) {
-        writer.addHistograms(tag: "\(tag).conv", layer: conv, globalStep: globalStep)
+        writer.addHistograms(tag: "\(tag).conv1", layer: conv1, globalStep: globalStep)
+        writer.addHistograms(tag: "\(tag).conv2", layer: conv2, globalStep: globalStep)
     }
 }
 
 extension DBlock: HistogramWritable {
     func writeHistograms(tag: String, writer: SummaryWriter, globalStep: Int?) {
-        writer.addHistograms(tag: "\(tag).conv", layer: conv, globalStep: globalStep)
+        writer.addHistograms(tag: "\(tag).conv1", layer: conv1, globalStep: globalStep)
+        writer.addHistograms(tag: "\(tag).conv2", layer: conv2, globalStep: globalStep)
     }
 }
