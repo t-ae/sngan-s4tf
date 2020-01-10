@@ -59,13 +59,14 @@ public func resizeNN(images: Tensor<Float>,
                      width: Int,
                      height: Int,
                      alignCorners: Bool) -> Tensor<Float> {
-    return _Raw.resizeNearestNeighbor(images: images,
-                                      size: Tensor([Int32(height), Int32(width)]),
-                                      alignCorners: true)
+    _Raw.resizeNearestNeighbor(images: images,
+                               size: Tensor([Int32(height), Int32(width)]),
+                               alignCorners: true)
 }
 
 //@derivative(of: resizeNN)
-public func vjpResizeNN(
+@usableFromInline
+func vjpResizeNN(
     images: Tensor<Float>,
     width: Int,
     height: Int,
@@ -86,13 +87,14 @@ public func resizeBL(images: Tensor<Float>,
                      width: Int,
                      height: Int,
                      alignCorners: Bool) -> Tensor<Float> {
-    return _Raw.resizeBilinear(images: images,
-                               size: Tensor([Int32(height), Int32(width)]),
-                               alignCorners: true)
+    _Raw.resizeBilinear(images: images,
+                        size: Tensor([Int32(height), Int32(width)]),
+                        alignCorners: true)
 }
 
 //@derivative(of: resizeBL)
-public func vjpResizeBL(
+@usableFromInline
+func vjpResizeBL(
     images: Tensor<Float>,
     width: Int,
     height: Int,
@@ -106,5 +108,38 @@ public func vjpResizeBL(
         _Raw.resizeBilinearGrad(grads: v,
                                 originalImage: images,
                                 alignCorners: alignCorners)
+    })
+}
+
+@differentiable(wrt: images, vjp: vjpResizeBC)
+public func resizeBC(images: Tensor<Float>,
+                     width: Int,
+                     height: Int,
+                     alignCorners: Bool = false,
+                     halfPixelCenters: Bool = false) -> Tensor<Float> {
+    _Raw.resizeBicubic(images: images,
+                       size: Tensor([Int32(height), Int32(width)]),
+                       alignCorners: alignCorners,
+                       halfPixelCenters: halfPixelCenters)
+}
+
+@usableFromInline
+func vjpResizeBC(
+    images: Tensor<Float>,
+    width: Int,
+    height: Int,
+    alignCorners: Bool,
+    halfPixelCenters: Bool
+) -> (value: Tensor<Float>, pullback: (Tensor<Float>)->Tensor<Float>) {
+    let resized = resizeBC(images: images,
+                           width: width,
+                           height: height,
+                           alignCorners: alignCorners,
+                           halfPixelCenters: halfPixelCenters)
+    return (resized, { v in
+        _Raw.resizeBicubicGrad(grads: v,
+                               originalImage: images,
+                               alignCorners: alignCorners,
+                               halfPixelCenters: halfPixelCenters)
     })
 }
