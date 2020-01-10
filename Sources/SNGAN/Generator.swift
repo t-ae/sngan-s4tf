@@ -27,7 +27,7 @@ struct GBlock: Layer {
         let pad: Padding = avoidPadding ? .valid : .same
         
         conv = SNConv2D(Conv2D(filterShape: (3, 3, inputShape.2, outputChannels), padding: pad,
-                                filterInitializer: glorotUniform(scale: sqrt(2))),
+                                filterInitializer: heNormal()),
                          enabled: enableSpectralNorm)
         
         norm = XNorm(method: normalizationMethod, dim: outputChannels)
@@ -81,7 +81,7 @@ struct Generator: Layer {
         self.activation = Activation(method: options.activation)
         
         head = SNDense(Dense(inputSize: options.latentSize, outputSize: 4*4*128,
-                             weightInitializer: glorotUniform()),
+                             weightInitializer: heNormal()),
                        enabled: options.enableSpectralNorm)
         block1 = GBlock(inputShape: (4, 4, 128), outputChannels: 128,
                         enableSpectralNorm: options.enableSpectralNorm,
@@ -110,7 +110,7 @@ struct Generator: Layer {
         
         // SN disabled
         tail = SNConv2D(Conv2D(filterShape: (3, 3, 16, 3), padding: .same,
-                               filterInitializer: glorotUniform()),
+                               filterInitializer: heNormal()),
                         enabled: false)
     }
     

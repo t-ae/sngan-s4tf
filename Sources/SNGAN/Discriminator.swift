@@ -26,7 +26,7 @@ struct DBlock: Layer {
         self.downSampleMethod = downSampleMethod
         
         conv = SNConv2D(Conv2D(filterShape: (3, 3, inputChannels, outputChannels), padding: .same,
-                               filterInitializer: glorotUniform()),
+                               filterInitializer: heNormal()),
                         enabled: enableSpectralNorm)
         
         norm = XNorm(method: normalizationMethod, dim: outputChannels)
@@ -82,7 +82,7 @@ struct Discriminator: Layer {
         self.options = options
         self.activation = Activation(method: options.activation)
         
-        head = SNConv2D(Conv2D(filterShape: (1, 1, 3, 16), filterInitializer: glorotUniform()),
+        head = SNConv2D(Conv2D(filterShape: (1, 1, 3, 16), filterInitializer: heNormal()),
                         enabled: options.enableSpectralNorm)
         
         block1 = DBlock(inputChannels: 16, outputChannels: 32,
@@ -108,7 +108,7 @@ struct Discriminator: Layer {
         
         let stdDim = options.enableMinibatchStdConcat ? 1 : 0
         stdConcat = MinibatchStdConcat(groupSize: 4)
-        tail = SNConv2D(Conv2D(filterShape: (4, 4, 128 + stdDim, 1), filterInitializer: glorotUniform()),
+        tail = SNConv2D(Conv2D(filterShape: (4, 4, 128 + stdDim, 1), filterInitializer: heNormal()),
                         enabled: options.enableSpectralNorm)
     }
     
