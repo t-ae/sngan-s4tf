@@ -38,6 +38,16 @@ final class CustomLayersTests: XCTestCase {
         XCTAssertEqual(g, g2)
     }
     
+    func testDepthToSpace() {
+        let input = Tensor<Float>([10, 11, 12, 13, 20, 21, 22, 23, 30, 31, 32, 33, 40, 41, 42, 43])
+            .reshaped(to: [1, 2, 2, 4])
+        let output = depthToSpace(input, blockSize: 2)
+        XCTAssertEqual(output, Tensor([[10, 11, 20, 21],
+                                       [12, 13, 22, 23],
+                                       [30, 31, 40, 41],
+                                       [32, 33, 42, 43]]).reshaped(to: [1, 4, 4, 1]))
+    }
+    
     static var allTests = [
         ("testMinibatchStdConcat", testMinibatchStdConcat),
     ]

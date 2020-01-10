@@ -61,7 +61,7 @@ public struct Activation: ParameterlessLayer {
 
 public struct Resize: ParameterlessLayer {
     public enum Method: String, Codable {
-        case nearestNeighbor, bilinear
+        case nearestNeighbor, bilinear, bicubic
     }
     
     @noDerivative
@@ -87,6 +87,8 @@ public struct Resize: ParameterlessLayer {
             return resizeNN(images: input, width: width, height: height, alignCorners: alignCorners)
         case .bilinear:
             return resizeBL(images: input, width: width, height: height, alignCorners: alignCorners)
+        case .bicubic:
+            return resizeBC(images: input, width: width, height: height, alignCorners: alignCorners)
         }
     }
 }
