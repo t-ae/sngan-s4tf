@@ -61,6 +61,7 @@ print("Total images: \(loader.entries.count)")
 
 let plotGridCols = 8
 let testNoise = sampleNoise(batchSize: plotGridCols*plotGridCols, latentSize: latentSize)
+let testNoiseIntpl = sampleInterpolationNoise(latentSize: latentSize)
 
 // MARK: - Plot
 let logName = "\(lossObj.name)_\(generatorOptions.upSampleMethod.rawValue)_\(discriminatorOptions.downSampleMethod.rawValue)"
@@ -150,7 +151,10 @@ for epoch in 0..<1000000 {
             // Inference
             Context.local.learningPhase = .inference
             let testImage = generator(testNoise)
-            plotImages(tag: "tests", images: testImage, globalStep: step)
+            plotImages(tag: "test/random", images: testImage, globalStep: step)
+            
+            let intplImage = generator(testNoiseIntpl)
+            plotImages(tag: "test/intpl", images: intplImage, globalStep: step)
             writer.flush()
         }
     }
