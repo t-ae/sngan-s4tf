@@ -4,6 +4,15 @@ import TensorFlow
 import CustomLayers
 
 final class CustomLayersTests: XCTestCase {
+    func testSNDenseGrad() {
+        let layer = SNDense<Float>(Dense(inputSize: 16, outputSize: 32), enabled: false)
+        let input = Tensor<Float>(ones: [4, 16])
+        let grad = gradient(at: layer) { layer -> Tensor<Float> in
+            let output = layer(input)
+            return output.mean()
+        }
+        XCTAssertNotEqual(grad.dense.weight.sum(), Tensor(0))
+    }
     func testMinibatchStdConcat() throws {
         let layer = MinibatchStdConcat<Float>(groupSize: 4)
         
