@@ -49,7 +49,7 @@ public struct InstanceNorm2D<Scalar: TensorFlowFloatingPoint>: ParameterlessLaye
         
         let mean = input.mean(alongAxes: 1, 2)
         let variance = squaredDifference(input, mean).mean(alongAxes: 1, 2)
-        return input * rsqrt(variance + 1e-8)
+        return (input - mean) * rsqrt(variance + 1e-8)
     }
 }
 
