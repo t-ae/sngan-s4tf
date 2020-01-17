@@ -6,8 +6,8 @@
         "repositoryURL": "https://github.com/t-ae/image-loader.git",
         "state": {
           "branch": null,
-          "revision": "2cfc9b0b7fd394655353644097c492262726848f",
-          "version": "0.1.5"
+          "revision": "14c362b0dd24e34904e6008b5bb6bab865ac3c73",
+          "version": "0.1.6"
         }
       },
       {
@@ -15,8 +15,8 @@
         "repositoryURL": "https://github.com/t-ae/tensorboardx-s4tf.git",
         "state": {
           "branch": null,
-          "revision": "1bc3e91ae87fec907834e99007ab0a332dec7eb4",
-          "version": "0.0.6"
+          "revision": "8fa72b632e4718de34bffbe3746aa90ec978f5be",
+          "version": "0.0.10"
         }
       }
     ]
