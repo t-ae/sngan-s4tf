@@ -56,6 +56,7 @@ let loader = ImageLoader(
         Transforms.centerCrop(width: config.imageSize.rawValue, height: config.imageSize.rawValue),
 //        Transforms.paddingToSquare(with: 1),
 //        Transforms.resizeBilinear(aspectFill: config.imageSize.rawValue),
+//        Transforms.randomFlipHorizontally(),
     ],
     rng: rng
 )
