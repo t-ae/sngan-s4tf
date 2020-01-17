@@ -7,12 +7,14 @@ Context.local.randomSeed = (42, 42)
 let rng = XorshiftRandomNumberGenerator()
 
 // MARK: - Configurations
-let batchSize = 64
-let latentSize = 128
-let nDisUpdate = 3 // D/G training ratio
+let config = Config(
+    batchSize: 64,
+    nDisUpdate: 3,
+    loss: .hinge
+)
 
-let generatorOptions = Generator.Options(
-    latentSize: latentSize,
+let genOptions = Generator.Options(
+    latentSize: 128,
     upSampleMethod: .bilinear,
     enableSpectralNorm: true,
     normalizationMethod: .batchNorm,
@@ -20,7 +22,7 @@ let generatorOptions = Generator.Options(
     tanhOutput: false,
     avoidPadding: false
 )
-let discriminatorOptions = Discriminator.Options(
+let discOptions = Discriminator.Options(
     enableSpectralNorm: true,
     downSampleMethod: .avgPool,
     normalizationMethod: .none,
@@ -28,13 +30,11 @@ let discriminatorOptions = Discriminator.Options(
     enableMinibatchStdConcat: true
 )
 
-//let lossObj = LSGANLoss()
-//let lossObj = NonSaturatingLoss()
-let lossObj = HingeLoss()
+let criterion = GANLoss(type: config.loss)
 
 // MARK: - Model definition
-var generator = Generator(options: generatorOptions)
-var discriminator = Discriminator(options: discriminatorOptions)
+var generator = Generator(options: genOptions)
+var discriminator = Discriminator(options: discOptions)
 
 let optG = Adam(for: generator, learningRate: 2e-4, beta1: 0.0, beta2: 0.9)
 let optD = Adam(for: discriminator, learningRate: 2e-4, beta1: 0.0, beta2: 0.9)
@@ -60,11 +60,11 @@ print("Total images: \(loader.entries.count)")
 
 
 let plotGridCols = 8
-let testNoise = sampleNoise(batchSize: plotGridCols*plotGridCols, latentSize: latentSize)
-let testNoiseIntpl = sampleInterpolationNoise(latentSize: latentSize)
+let testNoise = sampleNoise(batchSize: plotGridCols*plotGridCols, latentSize: genOptions.latentSize)
+let testNoiseIntpl = sampleInterpolationNoise(latentSize: genOptions.latentSize)
 
 // MARK: - Plot
-let logName = "\(lossObj.name)_\(generatorOptions.upSampleMethod.rawValue)_\(discriminatorOptions.downSampleMethod.rawValue)"
+let logName = "\(config.loss.rawValue)_\(genOptions.upSampleMethod.rawValue)_\(discOptions.downSampleMethod.rawValue)"
 let writer = SummaryWriter(logdir: URL(fileURLWithPath: "./output/\(logName)"))
 func plotImages(tag: String, images: Tensor<Float>, globalStep: Int) {
     var images = images
@@ -74,10 +74,9 @@ func plotImages(tag: String, images: Tensor<Float>, globalStep: Int) {
 }
 
 // Write configurations
-writer.addText(tag: "\(logName)/loss", text: lossObj.name)
-writer.addText(tag: "\(logName)/generatorOptions", text: generatorOptions.prettyJsonString())
-writer.addText(tag: "\(logName)/discriminatorOptions", text: discriminatorOptions.prettyJsonString())
-writer.addText(tag: "\(logName)/nDisUpdate", text: String(nDisUpdate))
+try writer.addJSONText(tag: "\(logName)/config", encodable: config)
+try writer.addJSONText(tag: "\(logName)/generatorOptions", encodable: genOptions)
+try writer.addJSONText(tag: "\(logName)/discriminatorOptions", encodable: discOptions)
 
 // MARK: - Training loop
 var step = 0
@@ -85,7 +84,7 @@ for epoch in 0..<1000000 {
     print("Epoch: \(epoch)")
     loader.shuffle()
     
-    for batch in loader.iterator(batchSize: batchSize) {
+    for batch in loader.iterator(batchSize: config.batchSize) {
         defer { step += 1 }
         if step % 10 == 0 {
             print("step: \(step)")
@@ -97,12 +96,12 @@ for epoch in 0..<1000000 {
         reals = reals * 2 - 1
         
         // MARK: Train generator
-        if step % nDisUpdate == 0 {
+        if step % config.nDisUpdate == 0 {
             let (lossG, 𝛁generator) = valueWithGradient(at: generator) { generator -> Tensor<Float> in
-                let noises = sampleNoise(batchSize: batchSize, latentSize: latentSize)
+                let noises = sampleNoise(batchSize: config.batchSize, latentSize: genOptions.latentSize)
                 let fakes = generator(noises)
                 let scores = discriminator(fakes)
-                let loss = lossObj.lossG(scores)
+                let loss = criterion.lossG(scores)
                 return loss
             }
             optG.update(&generator, along: 𝛁generator)
@@ -110,13 +109,13 @@ for epoch in 0..<1000000 {
         }
         
         // MARK: Train discrminator
-        let noises = sampleNoise(batchSize: batchSize, latentSize: latentSize)
+        let noises = sampleNoise(batchSize: config.batchSize, latentSize: genOptions.latentSize)
         let fakes = generator(noises)
         let (lossD, 𝛁discriminator) = valueWithGradient(at: discriminator) { discriminator -> Tensor<Float> in
             let fakeScores = discriminator(fakes)
             
             let realScores = discriminator(reals)
-            let loss = lossObj.lossD(real: realScores, fake: fakeScores)
+            let loss = criterion.lossD(real: realScores, fake: fakeScores)
             return loss
         }
         optD.update(&discriminator, along: 𝛁discriminator)
