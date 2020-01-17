@@ -74,6 +74,9 @@ struct Discriminator: Layer {
     }
     
     @noDerivative
+    var imageSize: ImageSize
+    
+    @noDerivative
     var options: Options
     
     var head: SNConv2D<Float>
@@ -81,43 +84,55 @@ struct Discriminator: Layer {
     var block2: DBlock
     var block3: DBlock
     var block4: DBlock
+    var block5: DBlock
     var tail: SNConv2D<Float>
     
     var stdConcat: MinibatchStdConcat<Float>
     
     var activation: Activation
     
-    init(options: Options) {
+    init(imageSize: ImageSize, options: Options) {
+        self.imageSize = imageSize
         self.options = options
         self.activation = Activation(method: options.activation)
         
-        head = SNConv2D(Conv2D(filterShape: (1, 1, 3, 16), filterInitializer: heNormal()),
+        let firstChannels = 32 * 32 / imageSize.rawValue
+        
+        head = SNConv2D(Conv2D(filterShape: (1, 1, 3, firstChannels), filterInitializer: heNormal()),
                         enabled: options.enableSpectralNorm)
         
-        block1 = DBlock(inputChannels: 16, outputChannels: 32,
+        block1 = DBlock(inputChannels: firstChannels, outputChannels: firstChannels*2,
                         enableSpectralNorm: options.enableSpectralNorm,
                         normalizationMethod: options.normalizationMethod,
                         downSampleMethod: options.downSampleMethod,
                         activation: activation)
-        block2 = DBlock(inputChannels: 32, outputChannels: 64,
+        block2 = DBlock(inputChannels: firstChannels*2, outputChannels: firstChannels*4,
                         enableSpectralNorm: options.enableSpectralNorm,
                         normalizationMethod: options.normalizationMethod,
                         downSampleMethod: options.downSampleMethod,
                         activation: activation)
-        block3 = DBlock(inputChannels: 64, outputChannels: 128,
+        block3 = DBlock(inputChannels: firstChannels*4, outputChannels: firstChannels*8,
                         enableSpectralNorm: options.enableSpectralNorm,
                         normalizationMethod: options.normalizationMethod,
                         downSampleMethod: options.downSampleMethod,
                         activation: activation)
-        block4 = DBlock(inputChannels: 128, outputChannels: 128,
+        block4 = DBlock(inputChannels: firstChannels*8, outputChannels: firstChannels*16,
                         enableSpectralNorm: options.enableSpectralNorm,
                         normalizationMethod: options.normalizationMethod,
                         downSampleMethod: options.downSampleMethod,
                         activation: activation)
+        block5 = DBlock(inputChannels: firstChannels*16, outputChannels: firstChannels*32,
+                        enableSpectralNorm: options.enableSpectralNorm,
+                        normalizationMethod: options.normalizationMethod,
+                        downSampleMethod: options.downSampleMethod,
+                        activation: activation)
+        
+        // Output channels will be 256 whatever `imageSize` is.
         
         let stdDim = options.enableMinibatchStdConcat ? 1 : 0
         stdConcat = MinibatchStdConcat(groupSize: 4)
-        tail = SNConv2D(Conv2D(filterShape: (4, 4, 128 + stdDim, 1), filterInitializer: heNormal()),
+        tail = SNConv2D(Conv2D(filterShape: (4, 4, 256 + stdDim, 1),
+                               filterInitializer: heNormal()),
                         enabled: options.enableSpectralNorm)
     }
     
@@ -125,11 +140,16 @@ struct Discriminator: Layer {
     func callAsFunction(_ input: Tensor<Float>) -> Tensor<Float> {
         var x = input
         
-        x = activation(head(x)) // [-1, 64, 64, 16]
-        x = block1(x) // [-1, 32, 32, 32]
-        x = block2(x) // [-1, 16, 16, 64]
-        x = block3(x) // [-1, 8, 8, 128]
-        x = block4(x) // [-1, 4, 4, 128]
+        x = activation(head(x))
+        x = block1(x)
+        x = block2(x)
+        x = block3(x)
+        if imageSize >= .x64 {
+            x = block4(x)
+        }
+        if imageSize >= .x128 {
+            x = block5(x) 
+        }
         
         if options.enableMinibatchStdConcat {
             x = stdConcat(x)  // [-1, 4, 4, 129]
@@ -146,7 +166,12 @@ struct Discriminator: Layer {
         writer.addHistograms(tag: "D/block1", layer: block1, globalStep: globalStep)
         writer.addHistograms(tag: "D/block2", layer: block2, globalStep: globalStep)
         writer.addHistograms(tag: "D/block3", layer: block3, globalStep: globalStep)
-        writer.addHistograms(tag: "D/block4", layer: block4, globalStep: globalStep)
+        if imageSize >= .x64 {
+            writer.addHistograms(tag: "D/block4", layer: block4, globalStep: globalStep)
+        }
+        if imageSize >= .x128 {
+            writer.addHistograms(tag: "D/block4", layer: block4, globalStep: globalStep)
+        }
         writer.addHistograms(tag: "D/tail", layer: tail, globalStep: globalStep)
     }
 }

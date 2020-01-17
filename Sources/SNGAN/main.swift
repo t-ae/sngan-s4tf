@@ -10,7 +10,8 @@ let rng = XorshiftRandomNumberGenerator()
 let config = Config(
     batchSize: 64,
     nDisUpdate: 3,
-    loss: .hinge
+    loss: .hinge,
+    imageSize: .x64
 )
 
 let genOptions = Generator.Options(
@@ -33,8 +34,8 @@ let discOptions = Discriminator.Options(
 let criterion = GANLoss(type: config.loss)
 
 // MARK: - Model definition
-var generator = Generator(options: genOptions)
-var discriminator = Discriminator(options: discOptions)
+var generator = Generator(imageSize: config.imageSize, options: genOptions)
+var discriminator = Discriminator(imageSize: config.imageSize, options: discOptions)
 
 let optG = Adam(for: generator, learningRate: 2e-4, beta1: 0.0, beta2: 0.9)
 let optD = Adam(for: discriminator, learningRate: 2e-4, beta1: 0.0, beta2: 0.9)
@@ -51,26 +52,30 @@ let entries = [Entry](directory: imageDir)
 let loader = ImageLoader(
     entries: entries,
     transforms: [
-        Transforms.resizeBilinear(aspectFill: 64),
-        Transforms.centerCrop(width: 64, height: 64)
+        Transforms.resizeBilinear(aspectFill: config.imageSize.rawValue),
+        Transforms.centerCrop(width: config.imageSize.rawValue, height: config.imageSize.rawValue),
+//        Transforms.paddingToSquare(with: 1),
+//        Transforms.resizeBilinear(aspectFill: config.imageSize.rawValue),
     ],
     rng: rng
 )
 print("Total images: \(loader.entries.count)")
 
 
-let plotGridCols = 8
-let testNoise = sampleNoise(batchSize: plotGridCols*plotGridCols, latentSize: genOptions.latentSize)
+let testNoise = sampleNoise(batchSize: 64, latentSize: genOptions.latentSize)
 let testNoiseIntpl = sampleInterpolationNoise(latentSize: genOptions.latentSize)
 
 // MARK: - Plot
-let logName = "\(config.loss.rawValue)_\(genOptions.upSampleMethod.rawValue)_\(discOptions.downSampleMethod.rawValue)"
+let logName = "\(config.loss.rawValue)_\(genOptions.upSampleMethod.rawValue)_\(discOptions.downSampleMethod.rawValue)_\(config.imageSize.rawValue)"
 let writer = SummaryWriter(logdir: URL(fileURLWithPath: "./output/\(logName)"))
 func plotImages(tag: String, images: Tensor<Float>, globalStep: Int) {
     var images = images
     images = (images + 1) / 2
     images = images.clipped(min: 0, max: 1)
-    writer.addImages(tag: tag, images: images, colSize: plotGridCols, globalStep: globalStep)
+    writer.addImages(tag: tag,
+                     images: images,
+                     colSize: config.imageSize.plotGridCols,
+                     globalStep: globalStep)
 }
 
 // Write configurations

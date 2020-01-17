@@ -74,6 +74,9 @@ struct Generator: Layer {
     }
     
     @noDerivative
+    var imageSize: ImageSize
+    
+    @noDerivative
     var options: Options
     
     var head: SNDense<Float>
@@ -81,11 +84,13 @@ struct Generator: Layer {
     var block2: GBlock
     var block3: GBlock
     var block4: GBlock
+    var block5: GBlock
     var tail: SNConv2D<Float>
     
     var activation: Activation
     
-    init(options: Options) {
+    init(imageSize: ImageSize, options: Options) {
+        self.imageSize = imageSize
         self.options = options
         self.activation = Activation(method: options.activation)
         
@@ -116,9 +121,17 @@ struct Generator: Layer {
                         normalizationMethod: options.normalizationMethod,
                         activation: activation,
                         avoidPadding: options.avoidPadding)
+        block5 = GBlock(inputShape: (64, 64, 16), outputChannels: 8,
+                        enableSpectralNorm: options.enableSpectralNorm,
+                        upsampleMethod: options.upSampleMethod,
+                        normalizationMethod: options.normalizationMethod,
+                        activation: activation,
+                        avoidPadding: options.avoidPadding)
+        
+        let lastChannels = 32 * 32 / imageSize.rawValue
         
         // SN disabled
-        tail = SNConv2D(Conv2D(filterShape: (3, 3, 16, 3), padding: .same,
+        tail = SNConv2D(Conv2D(filterShape: (3, 3, lastChannels, 3), padding: .same,
                                filterInitializer: heNormal()),
                         enabled: false)
     }
@@ -132,14 +145,20 @@ struct Generator: Layer {
         x = block1(x) // [-1, 8, 8, 128]
         x = block2(x) // [-1, 16, 16, 64]
         x = block3(x) // [-1, 32, 32, 32]
-        x = block4(x) // [-1, 64, 64, 16]
+        if imageSize >= .x64 {
+            x = block4(x) // [-1, 64, 64, 16]
+        }
+        if imageSize >= .x128 {
+            x = block5(x) // [-1, 128, 128, 8]
+        }
         x = tail(x)
         
         if options.tanhOutput {
             x = tanh(x)
         }
         
-        precondition(x.shape == [input.shape[0], 64, 64, 3], "Invalid shape: \(x.shape)")
+        precondition(x.shape == [input.shape[0], imageSize.rawValue, imageSize.rawValue, 3],
+                     "Invalid shape: \(x.shape)")
         
         return x
     }
@@ -149,7 +168,12 @@ struct Generator: Layer {
         writer.addHistograms(tag: "G/block1", layer: block1, globalStep: globalStep)
         writer.addHistograms(tag: "G/block2", layer: block2, globalStep: globalStep)
         writer.addHistograms(tag: "G/block3", layer: block3, globalStep: globalStep)
-        writer.addHistograms(tag: "G/block4", layer: block4, globalStep: globalStep)
+        if imageSize >= .x64 {
+            writer.addHistograms(tag: "G/block4", layer: block4, globalStep: globalStep)
+        }
+        if imageSize >= .x128 {
+            writer.addHistograms(tag: "G/block5", layer: block5, globalStep: globalStep)
+        }
         writer.addHistograms(tag: "G/tail", layer: tail, globalStep: globalStep)
     }
 }
