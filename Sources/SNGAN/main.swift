@@ -67,15 +67,10 @@ let testNoiseIntpl = sampleInterpolationNoise(latentSize: latentSize)
 let logName = "\(lossObj.name)_\(generatorOptions.upSampleMethod.rawValue)_\(discriminatorOptions.downSampleMethod.rawValue)"
 let writer = SummaryWriter(logdir: URL(fileURLWithPath: "./output/\(logName)"))
 func plotImages(tag: String, images: Tensor<Float>, globalStep: Int) {
-    let height = images.shape[1]
-    let width = images.shape[2]
-    let plotGridRows = images.shape[0] / plotGridCols
-    var grid = images.reshaped(to: [plotGridRows, plotGridCols, height, width, 3])
-    grid = grid.transposed(permutation: [0, 2, 1, 3, 4])
-    grid = grid.reshaped(to: [height*plotGridRows, width*plotGridCols, 3])
-    grid = (grid + 1) / 2
-    grid = grid.clipped(min: 0, max: 1)
-    writer.addImage(tag: tag, image: grid, globalStep: globalStep)
+    var images = images
+    images = (images + 1) / 2
+    images = images.clipped(min: 0, max: 1)
+    writer.addImages(tag: tag, images: images, colSize: plotGridCols, globalStep: globalStep)
 }
 
 // Write configurations
