@@ -69,13 +69,14 @@ let testNoiseIntpl = sampleInterpolationNoise(latentSize: genOptions.latentSize)
 // MARK: - Plot
 let logName = "\(config.loss.rawValue)_\(genOptions.upSampleMethod.rawValue)_\(discOptions.downSampleMethod.rawValue)_\(config.imageSize.rawValue)"
 let writer = SummaryWriter(logdir: URL(fileURLWithPath: "./output/\(logName)"))
-func plotImages(tag: String, images: Tensor<Float>, globalStep: Int) {
+func plotImages(tag: String, images: Tensor<Float>,
+                colSize: Int = config.imageSize.plotGridCols,  globalStep: Int) {
     var images = images
     images = (images + 1) / 2
     images = images.clipped(min: 0, max: 1)
     writer.addImages(tag: tag,
                      images: images,
-                     colSize: config.imageSize.plotGridCols,
+                     colSize: colSize,
                      globalStep: globalStep)
 }
 
@@ -154,7 +155,7 @@ for epoch in 0..<1000000 {
             plotImages(tag: "test/random", images: testImage, globalStep: step)
             
             let intplImage = generator(testNoiseIntpl)
-            plotImages(tag: "test/intpl", images: intplImage, globalStep: step)
+            plotImages(tag: "test/intpl", images: intplImage, colSize: 8, globalStep: step)
             writer.flush()
         }
     }
