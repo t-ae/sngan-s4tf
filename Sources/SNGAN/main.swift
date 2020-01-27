@@ -2,6 +2,7 @@ import Foundation
 import TensorFlow
 import TensorBoardX
 import ImageLoader
+import GANUtils
 
 Context.local.randomSeed = (42, 42)
 let rng = XorshiftRandomNumberGenerator()
@@ -31,7 +32,7 @@ let discOptions = Discriminator.Options(
     enableMinibatchStdConcat: true
 )
 
-let criterion = GANLoss(type: config.loss)
+let criterion = GANLoss(config.loss)
 
 // MARK: - Model definition
 var generator = Generator(imageSize: config.imageSize, options: genOptions)
@@ -52,7 +53,7 @@ let entries = [Entry](directory: imageDir)
 let loader = ImageLoader(
     entries: entries,
     transforms: [
-        Transforms.resizeBilinear(aspectFill: config.imageSize.rawValue),
+        Transforms.resize(.bilinear, aspectFill: config.imageSize.rawValue),
         Transforms.centerCrop(width: config.imageSize.rawValue, height: config.imageSize.rawValue),
 //        Transforms.paddingToSquare(with: 1),
 //        Transforms.resizeBilinear(aspectFill: config.imageSize.rawValue),
@@ -68,7 +69,7 @@ let testNoiseIntpl = sampleInterpolationNoise(latentSize: genOptions.latentSize)
 
 // MARK: - Plot
 let logName = "\(config.loss.rawValue)_\(genOptions.upSampleMethod.rawValue)_\(discOptions.downSampleMethod.rawValue)_\(config.imageSize.rawValue)"
-let writer = SummaryWriter(logdir: URL(fileURLWithPath: "./output/\(logName)"))
+let writer = SummaryWriter(logdir: URL(fileURLWithPath: "./logdir/\(logName)"))
 func plotImages(tag: String, images: Tensor<Float>,
                 colSize: Int = config.imageSize.plotGridCols,  globalStep: Int) {
     var images = images

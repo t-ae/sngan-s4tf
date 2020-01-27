@@ -1,10 +1,10 @@
 import TensorFlow
 import TensorBoardX
-import CustomLayers
+import GANUtils
 
 struct GBlock: Layer {
     @noDerivative
-    let upsampleMethod: Resize.Method
+    let upsampleMethod: ResizeLayer.Method
     
     var conv1: SNConv2D<Float>
     var conv2: SNConv2D<Float>
@@ -13,13 +13,13 @@ struct GBlock: Layer {
     
     var activation: Activation
     
-    var resize: Resize
+    var resize: ResizeLayer
     
     init(
         inputShape: (Int, Int, Int),
         outputChannels: Int,
         enableSpectralNorm: Bool,
-        upsampleMethod: Resize.Method,
+        upsampleMethod: ResizeLayer.Method,
         normalizationMethod: XNorm.Method,
         activation: Activation,
         avoidPadding: Bool
@@ -43,7 +43,7 @@ struct GBlock: Layer {
         // +4 to avoid padding
         let resizeW = inputShape.1 * 2 + (avoidPadding ? 4 : 0)
         let resizeH = inputShape.0 * 2 + (avoidPadding ? 4 : 0)
-        self.resize = Resize(width: resizeW, height: resizeH, method: upsampleMethod, alignCorners: true)
+        self.resize = ResizeLayer(upsampleMethod, width: resizeW, height: resizeH, alignCorners: true)
     }
     
     @differentiable
@@ -65,7 +65,7 @@ struct GBlock: Layer {
 struct Generator: Layer {
     struct Options: Codable {
         var latentSize: Int
-        var upSampleMethod: Resize.Method
+        var upSampleMethod: ResizeLayer.Method
         var enableSpectralNorm: Bool
         var normalizationMethod: XNorm.Method
         var activation: Activation.Method

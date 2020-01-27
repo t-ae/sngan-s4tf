@@ -1,4 +1,5 @@
 import Foundation
+import GANUtils
 
 struct Config: Codable {
     let batchSize: Int

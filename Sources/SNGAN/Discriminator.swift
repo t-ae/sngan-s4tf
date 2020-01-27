@@ -1,6 +1,6 @@
 import TensorFlow
 import TensorBoardX
-import CustomLayers
+import GANUtils
 
 struct DBlock: Layer {
     enum DownSampleMethod: String, Codable {

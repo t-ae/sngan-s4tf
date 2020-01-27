@@ -1,12 +1,6 @@
 import TensorFlow
-import CustomLayers
 import TensorBoardX
-
-extension SN: HistogramWritable where L: HistogramWritable {
-    public func writeHistograms(tag: String, writer: SummaryWriter, globalStep: Int?) {
-        layer.writeHistograms(tag: tag, writer: writer, globalStep: globalStep)
-    }
-}
+import GANUtils
 
 extension SNDense: HistogramWritable where Scalar == Float {
     public func writeHistograms(tag: String, writer: SummaryWriter, globalStep: Int?) {

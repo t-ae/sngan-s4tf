@@ -2,12 +2,21 @@
   "object": {
     "pins": [
       {
+        "package": "GANUtils",
+        "repositoryURL": "https://github.com/t-ae/gan-utils-s4tf.git",
+        "state": {
+          "branch": null,
+          "revision": "66cbcceb4c33f78f245088bdb26e8e65cec33f62",
+          "version": "0.1.3"
+        }
+      },
+      {
         "package": "ImageLoader",
         "repositoryURL": "https://github.com/t-ae/image-loader.git",
         "state": {
           "branch": null,
-          "revision": "af06c3308cbe4e95ba41011344368b3666ce4f62",
-          "version": "0.1.7"
+          "revision": "3c76ec2ef9d2bf1eef2e8d85dd3d31a586f51b8e",
+          "version": "0.1.8"
         }
       },
       {
